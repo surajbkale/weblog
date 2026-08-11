@@ -31,6 +31,9 @@ export const postsApi = {
   getBySlug: (slug: string) =>
     apiClient.get<ApiResponse<PostDetail>>(`/api/v1/posts/${slug}`),
 
+  getById: (id: string) =>
+    apiClient.get<ApiResponse<PostDetail>>(`/api/v1/posts/${id}`),
+
   myPosts: (page = 0, size = 20) =>
     apiClient.get<ApiResponse<PaginatedResponse<PostListItem>>>('/api/v1/posts/me', {
       params: { page, size },

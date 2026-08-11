@@ -33,7 +33,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (user) {
-      setDisplayName(user.displayName);
+      setDisplayName(user.displayName ?? '');
       setBio(user.bio ?? '');
       setAvatarUrl(user.avatarUrl ?? '');
     }
