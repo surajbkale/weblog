@@ -54,13 +54,15 @@ export default async function HomePage() {
 
   return (
     <div>
-      {/* ── Hero / Featured ─────────────────────────────────────────────── */}
+      {/* ── Featured hero ──────────────────────────────────────────────── */}
       {featured.length > 0 && (
         <section className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-            <div className="flex items-center gap-2 mb-6">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+            <div className="flex items-center gap-2 mb-5">
               <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-              <span className="text-sm font-semibold uppercase tracking-wider text-yellow-600 dark:text-yellow-400">Featured</span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-yellow-600 dark:text-yellow-400">
+                Featured
+              </span>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Large featured post */}
@@ -77,52 +79,66 @@ export default async function HomePage() {
         </section>
       )}
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-          {/* ── Latest posts ──────────────────────────────────────────────── */}
-          <div className="lg:col-span-2">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Latest</h2>
-              <Link href="/blog" className="flex items-center gap-1 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
+      {/* ── Main content area ───────────────────────────────────────────── */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div className="flex flex-col lg:flex-row gap-12">
+
+          {/* ── Latest posts — single column ───────────────────────────── */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between mb-7">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Latest</h2>
+              <Link
+                href="/blog"
+                className="flex items-center gap-1 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+              >
                 View all <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
 
             {latest.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="flex flex-col divide-y divide-gray-100 dark:divide-gray-800">
                 {latest.map((post) => (
-                  <PostCard key={post.id} post={post} />
+                  <PostCard key={post.id} post={post} variant="horizontal" />
                 ))}
               </div>
             ) : (
               <div className="text-center py-20 text-gray-400 dark:text-gray-600">
                 <p className="text-lg">No posts yet. Be the first to write!</p>
-                <Link href="/register" className="mt-3 inline-block text-blue-600 dark:text-blue-400 font-medium hover:underline">
+                <Link
+                  href="/register"
+                  className="mt-3 inline-block text-blue-600 dark:text-blue-400 font-medium hover:underline"
+                >
                   Get started →
                 </Link>
               </div>
             )}
           </div>
 
-          {/* ── Trending sidebar ───────────────────────────────────────────── */}
+          {/* ── Trending sidebar ────────────────────────────────────────── */}
           {trending.length > 0 && (
-            <aside className="lg:col-span-1">
+            <aside className="w-full lg:w-72 xl:w-80 flex-shrink-0">
               <div className="sticky top-24">
                 <div className="flex items-center gap-2 mb-4">
                   <TrendingUp className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                  <h2 className="text-lg font-bold text-gray-900 dark:text-white">Trending</h2>
+                  <h2 className="text-base font-bold text-gray-900 dark:text-white">Trending</h2>
                 </div>
-                <div className="bg-white dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700 p-4">
-                  {trending.slice(0, 5).map((post, i) => (
-                    <div key={post.id} className="flex gap-3 py-3 border-b border-gray-100 dark:border-gray-700 last:border-0">
-                      <span className="text-3xl font-black text-gray-100 dark:text-gray-700 leading-none w-8 text-center flex-shrink-0">
+                <div className="bg-white dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                  {trending.slice(0, 6).map((post, i) => (
+                    <div
+                      key={post.id}
+                      className="flex gap-3 px-4 py-3.5 border-b border-gray-100 dark:border-gray-700/60 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors"
+                    >
+                      <span className="text-2xl font-black text-gray-100 dark:text-gray-700 leading-none w-7 text-center flex-shrink-0 pt-0.5">
                         {i + 1}
                       </span>
                       <div className="min-w-0">
-                        <p className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-0.5">
+                        <p className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-0.5 truncate">
                           {post.author.displayName}
                         </p>
-                        <Link href={`/blog/${post.slug}`} className="text-sm font-semibold text-gray-800 dark:text-gray-200 line-clamp-2 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                        <Link
+                          href={`/blog/${post.slug}`}
+                          className="text-sm font-semibold text-gray-800 dark:text-gray-200 line-clamp-2 hover:text-blue-600 dark:hover:text-blue-400 transition-colors leading-snug"
+                        >
                           {post.title}
                         </Link>
                         <p className="text-xs text-gray-400 mt-1">{post.viewCount.toLocaleString()} views</p>
@@ -133,6 +149,7 @@ export default async function HomePage() {
               </div>
             </aside>
           )}
+
         </div>
       </div>
     </div>

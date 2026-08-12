@@ -5,8 +5,7 @@ import { useTheme } from 'next-themes';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
-import { Search, Sun, Moon, PenSquare, LogOut, User, LayoutDashboard, ShieldCheck, Menu, X } from 'lucide-react';
-import { cn } from '@/lib/utils/cn';
+import { Search, Sun, Moon, PenSquare, LogOut, User, LayoutDashboard, ShieldCheck, X } from 'lucide-react';
 
 export function Navbar() {
   const { theme, setTheme } = useTheme();
@@ -14,10 +13,11 @@ export function Navbar() {
   const router = useRouter();
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);   // mobile search expand
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const mobileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => setMounted(true), []);
 
@@ -32,25 +32,38 @@ export function Navbar() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  // Auto-focus mobile search input when it slides open
+  useEffect(() => {
+    if (searchOpen) {
+      setTimeout(() => mobileInputRef.current?.focus(), 150);
+    }
+  }, [searchOpen]);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       router.push(`/blog?q=${encodeURIComponent(searchQuery.trim())}`);
       setSearchQuery('');
+      setSearchOpen(false);
     }
   };
 
   return (
     <nav className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200/70 dark:border-gray-700/70 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+        {/* ── Main bar ──────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between h-16 gap-4">
 
           {/* Logo */}
-          <Link href="/" className="flex-shrink-0 font-extrabold text-xl text-gray-900 dark:text-white tracking-tight hover:opacity-80 transition-opacity">
+          <Link
+            href="/"
+            className="flex-shrink-0 font-extrabold text-xl text-gray-900 dark:text-white tracking-tight hover:opacity-80 transition-opacity"
+          >
             Weblogs
           </Link>
 
-          {/* Search bar — hidden on mobile */}
+          {/* Search bar — always visible on md+ */}
           <form
             onSubmit={handleSearch}
             className="hidden md:flex flex-1 max-w-sm items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-full px-4 py-2 border border-transparent focus-within:border-blue-500 dark:focus-within:border-blue-400 transition-colors"
@@ -66,7 +79,19 @@ export function Navbar() {
           </form>
 
           {/* Right actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
+
+            {/* Mobile search icon — shown only below md */}
+            <button
+              onClick={() => setSearchOpen(!searchOpen)}
+              className="md:hidden p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              aria-label={searchOpen ? 'Close search' : 'Open search'}
+            >
+              {searchOpen
+                ? <X className="h-5 w-5" />
+                : <Search className="h-5 w-5" />}
+            </button>
+
             {/* Theme toggle */}
             {mounted && (
               <button
@@ -121,7 +146,10 @@ export function Navbar() {
                         </Link>
                       )}
                       <hr className="my-1 border-gray-100 dark:border-gray-700" />
-                      <button onClick={() => { setDropdownOpen(false); logout(); }} className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                      <button
+                        onClick={() => { setDropdownOpen(false); logout(); }}
+                        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                      >
                         <LogOut className="h-4 w-4" /> Sign out
                       </button>
                     </div>
@@ -130,50 +158,50 @@ export function Navbar() {
               </>
             ) : (
               <div className="flex items-center gap-2">
-                <Link href="/login" className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                <Link
+                  href="/login"
+                  className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                >
                   Sign in
                 </Link>
-                <Link href="/register" className="text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 px-4 py-2 rounded-full transition-colors">
+                <Link
+                  href="/register"
+                  className="text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 px-4 py-2 rounded-full transition-colors"
+                >
                   Sign up
                 </Link>
               </div>
             )}
-
-            {/* Mobile menu toggle */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-              aria-label="Toggle menu"
-            >
-              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </button>
           </div>
         </div>
 
-        {/* Mobile search */}
-        {mobileMenuOpen && (
-          <div className="md:hidden pb-3">
-            <form onSubmit={handleSearch} className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-xl px-4 py-2 border border-transparent focus-within:border-blue-500 transition-colors">
-              <Search className="h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search posts…"
-                className="bg-transparent text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400 outline-none w-full"
-              />
-            </form>
-            {user && (
-              <Link
-                href="/dashboard/posts/new"
-                className="mt-2 flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-xl"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <PenSquare className="h-4 w-4" /> Write a post
-              </Link>
+        {/* ── Mobile search slide-down ───────────────────────────────────── */}
+        <div
+          className={`md:hidden overflow-hidden transition-all duration-200 ease-in-out ${
+            searchOpen ? 'max-h-16 opacity-100 pb-3' : 'max-h-0 opacity-0'
+          }`}
+        >
+          <form
+            onSubmit={handleSearch}
+            className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-xl px-4 py-2.5 border border-transparent focus-within:border-blue-500 dark:focus-within:border-blue-400 transition-colors"
+          >
+            <Search className="h-4 w-4 text-gray-400 flex-shrink-0" />
+            <input
+              ref={mobileInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search posts…"
+              className="bg-transparent text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400 outline-none w-full"
+            />
+            {searchQuery && (
+              <button type="button" onClick={() => setSearchQuery('')} className="text-gray-400 hover:text-gray-600">
+                <X className="h-4 w-4" />
+              </button>
             )}
-          </div>
-        )}
+          </form>
+        </div>
+
       </div>
     </nav>
   );

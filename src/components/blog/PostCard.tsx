@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils/cn';
 
 interface PostCardProps {
   post: PostListItem;
-  variant?: 'default' | 'featured' | 'compact';
+  variant?: 'default' | 'featured' | 'compact' | 'horizontal';
 }
 
 export function PostCard({ post, variant = 'default' }: PostCardProps) {
@@ -60,6 +60,69 @@ export function PostCard({ post, variant = 'default' }: PostCardProps) {
           <img src={post.coverImageUrl} alt={post.title} className="w-16 h-16 rounded-lg object-cover flex-shrink-0" />
         )}
       </Link>
+    );
+  }
+
+  // Horizontal feed card (image right, text left)
+  if (variant === 'horizontal') {
+    return (
+      <article className="group flex gap-4 sm:gap-6 py-5 hover:bg-gray-50 dark:hover:bg-gray-800/30 -mx-2 px-2 rounded-xl transition-colors">
+        {/* Text */}
+        <div className="flex-1 min-w-0 flex flex-col justify-between gap-3">
+          <div>
+            {/* Author row */}
+            <Link href={`/author/${post.author.id}`} className="flex items-center gap-2 mb-2">
+              {post.author.avatarUrl ? (
+                <img src={post.author.avatarUrl} alt={post.author.displayName} className="w-6 h-6 rounded-full object-cover" />
+              ) : (
+                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-xs font-bold">
+                  {(post.author.displayName ?? '?').charAt(0)}
+                </div>
+              )}
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{post.author.displayName}</span>
+            </Link>
+
+            {/* Title */}
+            <Link href={`/blog/${post.slug}`}>
+              <h2 className="font-bold text-gray-900 dark:text-white text-base sm:text-lg leading-snug line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors mb-1.5">
+                {post.title}
+              </h2>
+            </Link>
+
+            {/* Excerpt */}
+            {post.excerpt && (
+              <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 hidden sm:block">
+                {post.excerpt}
+              </p>
+            )}
+          </div>
+
+          {/* Footer meta */}
+          <div className="flex items-center gap-3 flex-wrap">
+            {post.categories[0] && (
+              <span className="text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
+                {post.categories[0].name}
+              </span>
+            )}
+            <span className="text-xs text-gray-400">{post.readingTimeMinutes} min read</span>
+            <span className="text-xs text-gray-300 dark:text-gray-600">·</span>
+            <span className="text-xs text-gray-400">{publishedDate}</span>
+          </div>
+        </div>
+
+        {/* Thumbnail */}
+        {post.coverImageUrl && (
+          <Link href={`/blog/${post.slug}`} className="flex-shrink-0">
+            <div className="w-24 h-24 sm:w-32 sm:h-24 rounded-xl overflow-hidden">
+              <img
+                src={post.coverImageUrl}
+                alt={post.title}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
+            </div>
+          </Link>
+        )}
+      </article>
     );
   }
 
