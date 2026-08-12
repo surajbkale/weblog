@@ -25,7 +25,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     <div className="min-h-screen flex bg-white dark:bg-gray-950 transition-colors">
 
       {/* ── Left decorative panel (desktop only) ─────────────────────────── */}
-      <div className="hidden lg:flex lg:w-[52%] xl:w-[55%] relative flex-col justify-between p-12 overflow-hidden bg-gradient-to-br from-indigo-950 via-blue-900 to-slate-900">
+      <div className="hidden lg:flex lg:w-1/2 relative flex-col items-center justify-center p-14 overflow-hidden bg-gradient-to-br from-indigo-950 via-blue-900 to-slate-900">
 
         {/* Ambient blobs */}
         <div className="pointer-events-none absolute inset-0">
@@ -43,33 +43,31 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           }}
         />
 
-        {/* Logo */}
-        <Link href="/" className="relative flex items-center gap-3 group w-fit">
+        {/* Logo — pinned top-left, outside centering flow */}
+        <Link href="/" className="absolute top-10 left-10 flex items-center gap-3 group z-10">
           <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center backdrop-blur-sm group-hover:bg-white/20 transition-colors">
             <BookOpen className="h-5 w-5 text-white" />
           </div>
           <span className="text-xl font-extrabold text-white tracking-tight">Weblogs</span>
         </Link>
 
-        {/* Quote block */}
-        <div className="relative">
-          <div className="text-6xl text-white/10 font-serif leading-none select-none mb-4">&ldquo;</div>
-          <blockquote className="text-xl font-medium text-white/90 leading-relaxed mb-4 max-w-sm">
+        {/* Quote block — centered in panel */}
+        <div className="relative w-full max-w-sm text-center">
+          <div className="text-7xl text-white/10 font-serif leading-none select-none mb-4">&ldquo;</div>
+          <blockquote className="text-xl font-medium text-white/90 leading-relaxed mb-5">
             {quote.text}
           </blockquote>
-          <p className="text-sm text-blue-300/80 font-medium">— {quote.author}</p>
+          <p className="text-sm text-blue-300/80 font-medium tracking-wide">— {quote.author}</p>
         </div>
 
-        {/* Bottom tagline */}
-        <div className="relative">
-          <p className="text-xs text-white/40 uppercase tracking-widest">
-            A modern platform for writers
-          </p>
-        </div>
+        {/* Tagline — pinned bottom-left */}
+        <p className="absolute bottom-10 left-10 text-xs text-white/30 uppercase tracking-widest">
+          A modern platform for writers
+        </p>
       </div>
 
       {/* ── Right form panel ─────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 lg:w-1/2 flex flex-col">
         {/* Mobile header */}
         <div className="lg:hidden flex items-center justify-center pt-8 pb-6 border-b border-gray-100 dark:border-gray-800">
           <Link href="/" className="flex items-center gap-2.5">
