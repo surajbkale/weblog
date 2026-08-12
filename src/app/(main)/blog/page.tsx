@@ -6,34 +6,40 @@ import { postsApi } from '@/lib/api/posts';
 import { categoriesApi } from '@/lib/api/categories';
 import { PostListItem, CategoryResponse, PaginatedResponse } from '@/types/post';
 import { PostCard, PostCardSkeleton } from '@/components/blog/PostCard';
-import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
 const SORT_OPTIONS = [
-  { value: 'newest', label: 'Newest' },
-  { value: 'oldest', label: 'Oldest' },
+  { value: 'newest',  label: 'Newest' },
+  { value: 'oldest',  label: 'Oldest' },
   { value: 'popular', label: 'Most Viewed' },
 ];
 
 export default function BlogListingPage() {
   const searchParams = useSearchParams();
-  const router = useRouter();
+  const router       = useRouter();
 
-  const q        = searchParams.get('q') || '';
+  const q        = searchParams.get('q')        || '';
   const category = searchParams.get('category') || '';
-  const tag      = searchParams.get('tag') || '';
-  const sort     = searchParams.get('sort') || 'newest';
+  const tag      = searchParams.get('tag')      || '';
+  const sort     = searchParams.get('sort')     || 'newest';
   const page     = parseInt(searchParams.get('page') || '0');
 
-  const [data, setData] = useState<PaginatedResponse<PostListItem> | null>(null);
+  const [data,       setData]       = useState<PaginatedResponse<PostListItem> | null>(null);
   const [categories, setCategories] = useState<CategoryResponse[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchInput, setSearchInput] = useState(q);
+  const [loading,    setLoading]    = useState(true);
 
   const updateParam = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams.toString());
     if (value) params.set(key, value); else params.delete(key);
-    params.delete('page'); // reset page on filter change
+    params.delete('page');
+    router.push(`/blog?${params.toString()}`);
+  };
+
+  const clearSearch = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('q');
+    params.delete('page');
     router.push(`/blog?${params.toString()}`);
   };
 
@@ -43,49 +49,81 @@ export default function BlogListingPage() {
 
   useEffect(() => {
     setLoading(true);
-    postsApi.list({ q, category, tag, sort: sort as any, page, size: 12 })
+    postsApi
+      .list({ q, category, tag, sort: sort as any, page, size: 12 })
       .then((r) => setData(r.data.data))
       .catch(() => setData(null))
       .finally(() => setLoading(false));
   }, [q, category, tag, sort, page]);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    updateParam('q', searchInput);
-  };
+  const hasActiveFilters = q || tag || category;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+
       {/* Page header */}
       <div className="mb-8">
-        <h1 className="text-4xl font-extrabold text-gray-900 dark:text-white mb-2">Explore</h1>
-        <p className="text-gray-500 dark:text-gray-400">Discover stories and ideas from our community</p>
+        <h1 className="text-4xl font-extrabold text-gray-900 dark:text-white mb-2">
+          {q ? `Results for "${q}"` : 'Explore'}
+        </h1>
+        <p className="text-gray-500 dark:text-gray-400">
+          {q
+            ? 'Showing posts matching your search'
+            : 'Discover stories and ideas from our community'}
+        </p>
       </div>
 
-      {/* Filters bar */}
-      <div className="bg-white dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 mb-8 flex flex-wrap gap-3 items-center">
-        {/* Search */}
-        <form onSubmit={handleSearch} className="flex items-center gap-2 bg-gray-100 dark:bg-gray-900 rounded-xl px-3 py-2 flex-1 min-w-[200px] max-w-sm">
-          <Search className="h-4 w-4 text-gray-400" />
-          <input
-            type="text"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search posts…"
-            className="bg-transparent text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400 outline-none w-full"
-          />
-        </form>
+      {/* Sort + active filter chips row */}
+      <div className="flex flex-wrap items-center gap-3 mb-6">
 
-        {/* Sort */}
+        {/* Sort dropdown */}
         <select
           value={sort}
           onChange={(e) => updateParam('sort', e.target.value)}
-          className="text-sm bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-gray-200 border-none rounded-xl px-3 py-2 outline-none cursor-pointer"
+          className="text-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 outline-none cursor-pointer hover:border-blue-400 transition-colors"
         >
           {SORT_OPTIONS.map(({ value, label }) => (
             <option key={value} value={value}>{label}</option>
           ))}
         </select>
+
+        {/* Active search chip */}
+        {q && (
+          <span className="flex items-center gap-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 px-3 py-1.5 rounded-full text-sm font-medium">
+            🔍 {q}
+            <button
+              onClick={clearSearch}
+              className="ml-0.5 hover:text-blue-900 dark:hover:text-blue-100 transition-colors"
+              aria-label="Clear search"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </span>
+        )}
+
+        {/* Active tag chip */}
+        {tag && (
+          <span className="flex items-center gap-1.5 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 px-3 py-1.5 rounded-full text-sm font-medium">
+            #{tag}
+            <button
+              onClick={() => updateParam('tag', '')}
+              className="ml-0.5 hover:text-purple-900 dark:hover:text-purple-100 transition-colors"
+              aria-label="Clear tag filter"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </span>
+        )}
+
+        {/* Clear all */}
+        {hasActiveFilters && (
+          <button
+            onClick={() => router.push('/blog')}
+            className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white underline underline-offset-2 transition-colors"
+          >
+            Clear all
+          </button>
+        )}
       </div>
 
       {/* Category pills */}
@@ -96,7 +134,7 @@ export default function BlogListingPage() {
             className={cn(
               'px-4 py-1.5 rounded-full text-sm font-medium transition-colors',
               !category
-                ? 'bg-blue-600 text-white'
+                ? 'bg-blue-600 text-white shadow-sm'
                 : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
             )}
           >
@@ -109,31 +147,13 @@ export default function BlogListingPage() {
               className={cn(
                 'px-4 py-1.5 rounded-full text-sm font-medium transition-colors',
                 category === cat.slug
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-blue-600 text-white shadow-sm'
                   : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
               )}
             >
               {cat.name}
             </button>
           ))}
-        </div>
-      )}
-
-      {/* Active filters */}
-      {(q || tag) && (
-        <div className="flex flex-wrap gap-2 mb-6">
-          {q && (
-            <span className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-3 py-1 rounded-full text-sm">
-              Search: "{q}"
-              <button onClick={() => { setSearchInput(''); updateParam('q', ''); }} className="hover:text-blue-900 dark:hover:text-blue-100">✕</button>
-            </span>
-          )}
-          {tag && (
-            <span className="flex items-center gap-2 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-3 py-1 rounded-full text-sm">
-              Tag: {tag}
-              <button onClick={() => updateParam('tag', '')} className="hover:text-purple-900">✕</button>
-            </span>
-          )}
         </div>
       )}
 
@@ -145,8 +165,20 @@ export default function BlogListingPage() {
       ) : !data || data.content.length === 0 ? (
         <div className="text-center py-24">
           <p className="text-5xl mb-4">📭</p>
-          <p className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">No posts found</p>
-          <p className="text-gray-500 dark:text-gray-400">Try adjusting your filters or search term</p>
+          <p className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">
+            No posts found
+          </p>
+          <p className="text-gray-500 dark:text-gray-400">
+            {q ? `No results for "${q}". Try a different term.` : 'Try adjusting your filters.'}
+          </p>
+          {hasActiveFilters && (
+            <button
+              onClick={() => router.push('/blog')}
+              className="mt-4 text-sm text-blue-600 dark:text-blue-400 underline underline-offset-2 hover:no-underline"
+            >
+              Clear all filters
+            </button>
+          )}
         </div>
       ) : (
         <>
