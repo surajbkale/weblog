@@ -10,9 +10,9 @@ import { ChevronLeft, ChevronRight, X, RefreshCw, AlertTriangle } from 'lucide-r
 import { cn } from '@/lib/utils/cn';
 
 const SORT_OPTIONS = [
-  { value: 'newest',  label: 'Newest' },
-  { value: 'oldest',  label: 'Oldest' },
-  { value: 'popular', label: 'Most Viewed' },
+  { value: 'newest',  label: 'Newest First' },
+  { value: 'oldest',  label: 'Oldest First' },
+  { value: 'popular', label: 'Most Liked' },
 ];
 
 export default function BlogListingPage() {
