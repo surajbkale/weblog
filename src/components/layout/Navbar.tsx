@@ -107,7 +107,7 @@ export function Navbar() {
               <>
                 {/* Write button */}
                 <Link
-                  href="/dashboard/posts/new"
+                  href="/profile/posts/new"
                   className="hidden sm:flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white text-sm font-medium rounded-full transition-colors"
                 >
                   <PenSquare className="h-4 w-4" />
@@ -134,11 +134,11 @@ export function Navbar() {
                         <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{user.displayName}</p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
                       </div>
-                      <Link href="/dashboard" onClick={() => setDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                        <LayoutDashboard className="h-4 w-4" /> Dashboard
+                      <Link href="/profile" onClick={() => setDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                        <LayoutDashboard className="h-4 w-4" /> Profile
                       </Link>
-                      <Link href="/dashboard/profile" onClick={() => setDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                        <User className="h-4 w-4" /> Edit Profile
+                      <Link href="/profile?tab=settings" onClick={() => setDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                        <User className="h-4 w-4" /> Settings
                       </Link>
                       {user.role === 'ADMIN' && (
                         <Link href="/admin" onClick={() => setDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-blue-600 dark:text-blue-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">

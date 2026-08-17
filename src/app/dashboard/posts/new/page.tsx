@@ -87,7 +87,7 @@ export default function NewPostPage() {
         await postsApi.publish(postId);
         router.push(`/blog/${res.data.data.slug}`);
       } else {
-        router.push('/dashboard/posts');
+        router.push('/profile');
       }
     } catch { alert('Failed to save post.'); }
     finally { setSaving(false); setPublishing(false); }
@@ -102,7 +102,7 @@ export default function NewPostPage() {
 
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <Link href="/dashboard/posts" className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
+          <Link href="/profile" className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
             <ArrowLeft className="h-4 w-4" /> My Posts
           </Link>
           <div className="flex items-center gap-3">

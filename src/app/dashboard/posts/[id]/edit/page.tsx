@@ -125,7 +125,7 @@ export default function EditPostPage({ params }: Props) {
         await postsApi.publish(postId);
       }
 
-      router.push('/dashboard/posts');
+      router.push('/profile');
     } catch {
       alert('Failed to save post. Please try again.');
     } finally {
@@ -158,7 +158,7 @@ export default function EditPostPage({ params }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <Link href="/dashboard/posts" className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors mb-0.5">
+            <Link href="/profile" className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors mb-0.5">
               <ArrowLeft className="h-4 w-4" /> My Posts
             </Link>
             <p className="text-xs text-gray-400 dark:text-gray-500">
