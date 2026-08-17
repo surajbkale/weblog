@@ -9,6 +9,11 @@ import Link from 'next/link';
 import { ArrowRight, TrendingUp, Star } from 'lucide-react';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+// INTERNAL_API_URL is used for SSR fetches that run inside the Docker container.
+// In Docker, the frontend container can't reach the API via `localhost` (which
+// resolves to the container itself). Set INTERNAL_API_URL=http://host.docker.internal:8080
+// in docker-compose so server-side fetches go through the host network.
+const SSR_API_BASE = process.env.INTERNAL_API_URL || API_BASE;
 
 export const metadata: Metadata = {
   title: 'Weblogs — Modern Writing Platform',
@@ -19,7 +24,7 @@ export const revalidate = 300;
 
 async function getTrending(): Promise<PostListItem[]> {
   try {
-    const res = await axios.get<ApiResponse<PostListItem[]>>(`${API_BASE}/api/v1/posts/trending`);
+    const res = await axios.get<ApiResponse<PostListItem[]>>(`${SSR_API_BASE}/api/v1/posts/trending`);
     return res.data.data;
   } catch {
     return [];
@@ -28,7 +33,7 @@ async function getTrending(): Promise<PostListItem[]> {
 
 async function getFeatured(): Promise<PostListItem[]> {
   try {
-    const res = await axios.get<ApiResponse<PostListItem[]>>(`${API_BASE}/api/v1/posts/featured`);
+    const res = await axios.get<ApiResponse<PostListItem[]>>(`${SSR_API_BASE}/api/v1/posts/featured`);
     return res.data.data;
   } catch {
     return [];
@@ -38,7 +43,7 @@ async function getFeatured(): Promise<PostListItem[]> {
 async function getLatest(): Promise<PostListItem[]> {
   try {
     const res = await axios.get<ApiResponse<{ content: PostListItem[] }>>(
-      `${API_BASE}/api/v1/posts?sort=newest&size=9`
+      `${SSR_API_BASE}/api/v1/posts?sort=newest&size=9`
     );
     return res.data.data.content;
   } catch {
