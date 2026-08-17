@@ -6,7 +6,7 @@ import { postsApi } from '@/lib/api/posts';
 import { categoriesApi } from '@/lib/api/categories';
 import { PostListItem, CategoryResponse, PaginatedResponse } from '@/types/post';
 import { PostCard, PostCardSkeleton } from '@/components/blog/PostCard';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, RefreshCw, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
 const SORT_OPTIONS = [
@@ -28,6 +28,8 @@ export default function BlogListingPage() {
   const [data,       setData]       = useState<PaginatedResponse<PostListItem> | null>(null);
   const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [loading,    setLoading]    = useState(true);
+  // FIX #8: track fetch errors to show proper UI
+  const [fetchError, setFetchError] = useState(false);
 
   const updateParam = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -44,15 +46,17 @@ export default function BlogListingPage() {
   };
 
   useEffect(() => {
+    // FIX #8: categories failure is non-fatal — silently ok
     categoriesApi.list().then((r) => setCategories(r.data.data)).catch(() => {});
   }, []);
 
   useEffect(() => {
     setLoading(true);
+    setFetchError(false);
     postsApi
       .list({ q, category, tag, sort: sort as any, page, size: 12 })
-      .then((r) => setData(r.data.data))
-      .catch(() => setData(null))
+      .then((r) => { setData(r.data.data); })
+      .catch(() => { setData(null); setFetchError(true); })
       .finally(() => setLoading(false));
   }, [q, category, tag, sort, page]);
 
@@ -161,6 +165,19 @@ export default function BlogListingPage() {
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {Array.from({ length: 9 }).map((_, i) => <PostCardSkeleton key={i} />)}
+        </div>
+      ) : fetchError ? (
+        /* FIX #8: show error state with retry */
+        <div className="text-center py-24">
+          <AlertTriangle className="h-12 w-12 text-red-400 mx-auto mb-4" />
+          <p className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">Failed to load posts</p>
+          <p className="text-gray-500 dark:text-gray-400 mb-5">The server may be unavailable. Please try again.</p>
+          <button
+            onClick={() => { setFetchError(false); setLoading(true); postsApi.list({ q, category, tag, sort: sort as any, page, size: 12 }).then(r => setData(r.data.data)).catch(() => setFetchError(true)).finally(() => setLoading(false)); }}
+            className="flex items-center gap-2 mx-auto px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-full transition-colors"
+          >
+            <RefreshCw className="h-4 w-4" /> Try again
+          </button>
         </div>
       ) : !data || data.content.length === 0 ? (
         <div className="text-center py-24">

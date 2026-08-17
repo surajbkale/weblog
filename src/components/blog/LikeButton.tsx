@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Heart } from 'lucide-react';
 import { postsApi } from '@/lib/api/posts';
 import { useAuth } from '@/context/AuthContext';
@@ -19,6 +19,17 @@ export function LikeButton({ postId, initialCount, initialLiked }: LikeButtonPro
   const [liked, setLiked] = useState(initialLiked);
   const [count, setCount] = useState(initialCount);
   const [loading, setLoading] = useState(false);
+
+  // FIX #15: SSR renders with initialLiked=false; once auth resolves, re-fetch the real state
+  useEffect(() => {
+    if (!user) return;
+    postsApi.getById(postId)
+      .then(r => {
+        setLiked(r.data.data.likedByCurrentUser);
+        setCount(r.data.data.likeCount);
+      })
+      .catch(() => {}); // non-critical — fallback to initial values
+  }, [user, postId]);
 
   const toggle = async () => {
     if (!user) {

@@ -1,7 +1,9 @@
+'use client';
+
 import Link from 'next/link';
 import { PostListItem } from '@/types/post';
 import { formatDistanceToNow } from 'date-fns';
-import { Heart, MessageCircle, Eye, Clock } from 'lucide-react';
+import { Heart, MessageCircle, Eye, Clock, Tag } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
 interface PostCardProps {
@@ -73,7 +75,8 @@ export function PostCard({ post, variant = 'default' }: PostCardProps) {
             {/* Author row */}
             <Link href={`/author/${post.author.id}`} className="flex items-center gap-2 mb-2">
               {post.author.avatarUrl ? (
-                <img src={post.author.avatarUrl} alt={post.author.displayName} className="w-6 h-6 rounded-full object-cover" />
+                <img src={post.author.avatarUrl} alt={post.author.displayName} className="w-6 h-6 rounded-full object-cover"
+                  onError={e => { e.currentTarget.style.display = 'none'; }} />
               ) : (
                 <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-xs font-bold">
                   {(post.author.displayName ?? '?').charAt(0)}
@@ -97,13 +100,20 @@ export function PostCard({ post, variant = 'default' }: PostCardProps) {
             )}
           </div>
 
-          {/* Footer meta */}
+          {/* Footer meta — FIX #17: show tags */}
           <div className="flex items-center gap-3 flex-wrap">
             {post.categories[0] && (
               <span className="text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
                 {post.categories[0].name}
               </span>
             )}
+            {post.tags.slice(0, 2).map(tag => (
+              <Link key={tag.id} href={`/blog?tag=${tag.slug}`}
+                className="text-xs text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                onClick={e => e.stopPropagation()}>
+                #{tag.name}
+              </Link>
+            ))}
             <span className="text-xs text-gray-400">{post.readingTimeMinutes} min read</span>
             <span className="text-xs text-gray-300 dark:text-gray-600">·</span>
             <span className="text-xs text-gray-400">{publishedDate}</span>
@@ -176,7 +186,8 @@ export function PostCard({ post, variant = 'default' }: PostCardProps) {
         <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700">
           <Link href={`/author/${post.author.id}`} className="flex items-center gap-2 min-w-0">
             {post.author.avatarUrl ? (
-              <img src={post.author.avatarUrl} alt={post.author.displayName} className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
+              <img src={post.author.avatarUrl} alt={post.author.displayName} className="w-7 h-7 rounded-full object-cover flex-shrink-0"
+                onError={e => { e.currentTarget.style.display = 'none'; }} />
             ) : (
               <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                 {(post.author.displayName ?? '?').charAt(0)}
@@ -193,6 +204,18 @@ export function PostCard({ post, variant = 'default' }: PostCardProps) {
             <span className="flex items-center gap-1"><MessageCircle className="h-3.5 w-3.5" />{post.commentCount}</span>
             <span className="flex items-center gap-1"><Eye className="h-3.5 w-3.5" />{post.viewCount}</span>
           </div>
+          {/* FIX #17: tags row on default card */}
+          {post.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 pt-2">
+              {post.tags.slice(0, 3).map(tag => (
+                <Link key={tag.id} href={`/blog?tag=${tag.slug}`}
+                  className="text-xs text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                  onClick={e => e.stopPropagation()}>
+                  #{tag.name}
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </article>

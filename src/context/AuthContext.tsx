@@ -70,6 +70,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   useEffect(() => {
+    // FIX #16: Only attempt refresh if a lightweight session_hint cookie is present.
+    // The backend sets `session_hint=1; SameSite=Lax` alongside the HttpOnly refresh token.
+    // If it's absent, the user is definitely a guest — skip both API calls entirely.
+    const hasHint = document.cookie.split(';').some(c => c.trim().startsWith('session_hint='));
+    if (!hasHint) {
+      setIsLoading(false);
+      return;
+    }
+
     // Restore session on every full page load / tab open.
     checkAuth();
 
