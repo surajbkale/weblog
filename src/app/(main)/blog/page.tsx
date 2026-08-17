@@ -1,5 +1,7 @@
 'use client';
 
+import { Suspense } from 'react';
+
 import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { postsApi } from '@/lib/api/posts';
@@ -15,7 +17,7 @@ const SORT_OPTIONS = [
   { value: 'popular', label: 'Most Liked' },
 ];
 
-export default function BlogListingPage() {
+function BlogListingContent() {
   const searchParams = useSearchParams();
   const router       = useRouter();
 
@@ -233,5 +235,19 @@ export default function BlogListingPage() {
         </>
       )}
     </div>
+  );
+}
+
+export default function BlogListingPage() {
+  return (
+    <Suspense fallback={
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Array.from({ length: 9 }).map((_, i) => <PostCardSkeleton key={i} />)}
+        </div>
+      </div>
+    }>
+      <BlogListingContent />
+    </Suspense>
   );
 }
