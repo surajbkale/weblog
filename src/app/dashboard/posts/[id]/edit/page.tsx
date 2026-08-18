@@ -72,11 +72,15 @@ export default function EditPostPage({ params }: Props) {
       .finally(() => setFetchLoading(false));
   }, [slug, router]);
 
-  // FIX #5: render real Markdown preview
+  // Render Markdown preview with marked, sanitized by DOMPurify to prevent XSS
   useEffect(() => {
     if (tab !== 'preview' || !content) { setPreviewHtml(''); return; }
-    import('marked').then(({ marked }) => {
-      setPreviewHtml(marked.parse(content, { async: false }) as string);
+    Promise.all([
+      import('marked'),
+      import('isomorphic-dompurify'),
+    ]).then(([{ marked }, { default: DOMPurify }]) => {
+      const rawHtml = marked.parse(content, { async: false }) as string;
+      setPreviewHtml(DOMPurify.sanitize(rawHtml));
     });
   }, [tab, content]);
 
