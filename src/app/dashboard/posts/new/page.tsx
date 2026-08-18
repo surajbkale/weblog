@@ -45,11 +45,15 @@ export default function NewPostPage() {
     categoriesApi.list().then(r => setCategories(r.data.data)).catch(() => {});
   }, []);
 
-  // FIX #5: load marked dynamically and render preview
+  // Render Markdown preview with marked, sanitized by DOMPurify to prevent XSS
   useEffect(() => {
     if (tab !== 'preview' || !content) { setPreviewHtml(''); return; }
-    import('marked').then(({ marked }) => {
-      setPreviewHtml(marked.parse(content, { async: false }) as string);
+    Promise.all([
+      import('marked'),
+      import('isomorphic-dompurify'),
+    ]).then(([{ marked }, { default: DOMPurify }]) => {
+      const rawHtml = marked.parse(content, { async: false }) as string;
+      setPreviewHtml(DOMPurify.sanitize(rawHtml));
     });
   }, [tab, content]);
 
