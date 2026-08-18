@@ -19,8 +19,18 @@ export interface ListPostsParams {
 }
 
 export const postsApi = {
-  list: (params: ListPostsParams = {}) =>
-    apiClient.get<ApiResponse<PaginatedResponse<PostListItem>>>('/api/v1/posts', { params }),
+  list: (params: ListPostsParams = {}) => {
+    // Strip empty strings so they are omitted from the query string entirely.
+    // The backend SQL uses  CAST(:param AS TEXT) IS NULL  — an empty string ""
+    // passes that check as FALSE, causing category/tag/q filters to match nothing.
+    const cleaned: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== '' && value !== undefined && value !== null) {
+        cleaned[key] = value;
+      }
+    }
+    return apiClient.get<ApiResponse<PaginatedResponse<PostListItem>>>('/api/v1/posts', { params: cleaned });
+  },
 
   trending: () =>
     apiClient.get<ApiResponse<PostListItem[]>>('/api/v1/posts/trending'),

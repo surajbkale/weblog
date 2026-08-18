@@ -101,6 +101,10 @@ body {
   color: #9ca3af;
 }
 
+.dark .prose-custom a {
+  color: #60a5fa; /* blue-400 — readable on dark backgrounds */
+}
+
 .dark .prose-custom code:not(pre code) {
   background: #1f2937;
   color: #f87171;

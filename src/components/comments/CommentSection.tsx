@@ -5,7 +5,7 @@ import { commentsApi } from '@/lib/api/comments';
 import { CommentResponse } from '@/types/comment';
 import { useAuth } from '@/context/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
-import { MessageCircle, Send, Reply, Trash2, Edit2 } from 'lucide-react';
+import { MessageCircle, Send, Reply, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 
 interface CommentSectionProps {
@@ -13,14 +13,19 @@ interface CommentSectionProps {
   commentCount: number;
 }
 
+// ── Single comment row (supports replies) ─────────────────────────────────────
 function CommentItem({
   comment,
+  replies,
   onReply,
   onDelete,
+  depth = 0,
 }: {
   comment: CommentResponse;
-  onReply: (parentId: string) => void;
+  replies: CommentResponse[];
+  onReply: (parentId: string, authorName: string) => void;
   onDelete: (id: string) => void;
+  depth?: number;
 }) {
   const { user } = useAuth();
   const isOwn = user?.id === comment.author.id;
@@ -28,69 +33,94 @@ function CommentItem({
 
   if (comment.deleted) {
     return (
-      <div className="py-3 border-b border-gray-100 dark:border-gray-800 last:border-0">
-        <p className="text-sm text-gray-400 dark:text-gray-600 italic">[deleted]</p>
+      <div className={depth > 0 ? 'ml-10 mt-2' : ''}>
+        <div className="py-3 border-b border-gray-100 dark:border-gray-800 last:border-0">
+          <p className="text-sm text-gray-400 dark:text-gray-600 italic">[deleted]</p>
+        </div>
+        {/* Still show replies of deleted comments */}
+        {replies.map(r => (
+          <CommentItem key={r.id} comment={r} replies={[]} onReply={onReply} onDelete={onDelete} depth={depth + 1} />
+        ))}
       </div>
     );
   }
 
   return (
-    <div className="py-4 border-b border-gray-100 dark:border-gray-800 last:border-0">
-      <div className="flex items-start gap-3">
-        {/* Avatar */}
-        {comment.author.avatarUrl ? (
-          <img src={comment.author.avatarUrl} alt={comment.author.displayName} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
-        ) : (
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-            {(comment.author.displayName ?? '?').charAt(0)}
-          </div>
-        )}
+    <div className={depth > 0 ? 'ml-10 border-l-2 border-gray-100 dark:border-gray-800 pl-4 mt-2' : ''}>
+      <div className="py-4 border-b border-gray-100 dark:border-gray-800 last:border-0">
+        <div className="flex items-start gap-3">
+          {comment.author.avatarUrl ? (
+            <img
+              src={comment.author.avatarUrl}
+              alt={comment.author.displayName}
+              className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+              onError={e => { e.currentTarget.style.display = 'none'; }}
+            />
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+              {(comment.author.displayName ?? '?').charAt(0)}
+            </div>
+          )}
 
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-sm font-semibold text-gray-900 dark:text-white">{comment.author.displayName}</span>
-            <span className="text-xs text-gray-400">{timeAgo}</span>
-          </div>
-          <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{comment.content}</p>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-sm font-semibold text-gray-900 dark:text-white">{comment.author.displayName}</span>
+              <span className="text-xs text-gray-400">{timeAgo}</span>
+            </div>
+            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{comment.content}</p>
 
-          <div className="flex items-center gap-3 mt-2">
-            {user && (
-              <button
-                onClick={() => onReply(comment.id)}
-                className="flex items-center gap-1 text-xs text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-              >
-                <Reply className="h-3.5 w-3.5" /> Reply
-              </button>
-            )}
-            {isOwn && (
-              <button
-                onClick={() => onDelete(comment.id)}
-                className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors"
-              >
-                <Trash2 className="h-3.5 w-3.5" /> Delete
-              </button>
-            )}
+            <div className="flex items-center gap-3 mt-2">
+              {user && depth === 0 && (
+                <button
+                  onClick={() => onReply(comment.id, comment.author.displayName)}
+                  className="flex items-center gap-1 text-xs text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                >
+                  <Reply className="h-3.5 w-3.5" /> Reply
+                </button>
+              )}
+              {isOwn && (
+                <button
+                  onClick={() => onDelete(comment.id)}
+                  className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors"
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> Delete
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Render replies nested under this comment */}
+      {replies.map(r => (
+        <CommentItem key={r.id} comment={r} replies={[]} onReply={onReply} onDelete={onDelete} depth={depth + 1} />
+      ))}
     </div>
   );
 }
 
-export function CommentSection({ postId, commentCount }: CommentSectionProps) {
+// ── Main comment section ──────────────────────────────────────────────────────
+export function CommentSection({ postId, commentCount: initialCount }: CommentSectionProps) {
   const { user } = useAuth();
   const [comments, setComments] = useState<CommentResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [newComment, setNewComment] = useState('');
-  const [replyToId, setReplyToId] = useState<string | null>(null);
+  // FIX #3: track reply state with author name for the UI label
+  const [replyTo, setReplyTo] = useState<{ id: string; name: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // FIX #13: track count locally so it updates on new comment
+  const [count, setCount] = useState(initialCount);
 
   useEffect(() => {
-    commentsApi.listByPost(postId)
-      .then((r) => setComments(r.data.data.content))
+    commentsApi.listByPost(postId, 0, 100)
+      .then(r => setComments(r.data.data.content))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [postId]);
+
+  // Separate roots from replies
+  const roots = comments.filter(c => !c.parentId);
+  const repliesFor = (parentId: string) => comments.filter(c => c.parentId === parentId);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,11 +130,13 @@ export function CommentSection({ postId, commentCount }: CommentSectionProps) {
     try {
       const res = await commentsApi.add(postId, {
         content: newComment.trim(),
-        parentId: replyToId ?? undefined,
+        parentId: replyTo?.id ?? undefined,
       });
-      setComments((prev) => [res.data.data, ...prev]);
+      const newC = res.data.data;
+      setComments(prev => [...prev, newC]);
+      setCount(c => c + 1);
       setNewComment('');
-      setReplyToId(null);
+      setReplyTo(null);
     } catch {
       alert('Failed to post comment. Please try again.');
     } finally {
@@ -116,39 +148,35 @@ export function CommentSection({ postId, commentCount }: CommentSectionProps) {
     if (!confirm('Delete this comment?')) return;
     try {
       await commentsApi.delete(id);
-      setComments((prev) =>
-        prev.map((c) => (c.id === id ? { ...c, deleted: true, content: null } : c))
-      );
+      setComments(prev => prev.map(c => c.id === id ? { ...c, deleted: true, content: null } : c));
+      setCount(c => Math.max(0, c - 1));
     } catch {
       alert('Failed to delete comment.');
     }
   };
 
-  const replyTarget = replyToId
-    ? comments.find((c) => c.id === replyToId)
-    : null;
-
   return (
     <section>
+      {/* FIX #13: count derived from local state */}
       <h2 className="flex items-center gap-2 text-xl font-bold text-gray-900 dark:text-white mb-6">
         <MessageCircle className="h-5 w-5" />
-        {commentCount} Comment{commentCount !== 1 ? 's' : ''}
+        {count} Comment{count !== 1 ? 's' : ''}
       </h2>
 
       {/* Comment form */}
       {user ? (
         <form onSubmit={handleSubmit} className="mb-8">
-          {replyTarget && (
+          {replyTo && (
             <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl px-4 py-2 mb-3 text-sm">
               <span className="text-blue-700 dark:text-blue-300">
-                Replying to <strong>{replyTarget.author.displayName}</strong>
+                Replying to <strong>{replyTo.name}</strong>
               </span>
-              <button type="button" onClick={() => setReplyToId(null)} className="text-blue-400 hover:text-blue-700 dark:hover:text-blue-200">✕</button>
+              <button type="button" onClick={() => setReplyTo(null)} className="text-blue-400 hover:text-blue-700 dark:hover:text-blue-200">✕</button>
             </div>
           )}
           <textarea
             value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
+            onChange={e => setNewComment(e.target.value)}
             placeholder="Share your thoughts…"
             rows={3}
             className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none transition-colors"
@@ -173,10 +201,10 @@ export function CommentSection({ postId, commentCount }: CommentSectionProps) {
         </div>
       )}
 
-      {/* Comments list */}
+      {/* Comments list — threaded */}
       {loading ? (
         <div className="space-y-4">
-          {[1, 2, 3].map((i) => (
+          {[1, 2, 3].map(i => (
             <div key={i} className="flex gap-3 animate-pulse">
               <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex-shrink-0" />
               <div className="flex-1 space-y-2">
@@ -187,15 +215,16 @@ export function CommentSection({ postId, commentCount }: CommentSectionProps) {
             </div>
           ))}
         </div>
-      ) : comments.length === 0 ? (
+      ) : roots.length === 0 ? (
         <p className="text-center text-gray-400 dark:text-gray-600 py-8">No comments yet. Be the first!</p>
       ) : (
         <div>
-          {comments.map((c) => (
+          {roots.map(c => (
             <CommentItem
               key={c.id}
               comment={c}
-              onReply={(id) => setReplyToId(id)}
+              replies={repliesFor(c.id)}
+              onReply={(id, name) => setReplyTo({ id, name })}
               onDelete={handleDelete}
             />
           ))}

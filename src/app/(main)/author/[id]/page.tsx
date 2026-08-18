@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-export const revalidate = 300;
+export const revalidate = 60;
 
 async function getData(id: string) {
   const [profileRes, postsRes] = await Promise.allSettled([

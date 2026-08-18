@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -12,18 +12,16 @@ import { formatDistanceToNow } from 'date-fns';
 import {
   PenSquare, Eye, EyeOff, Trash2, Edit2, Clock,
   Upload, Save, Lock, Loader2, CheckCircle2, AlertCircle,
-  FileText, Settings, ShieldCheck, ExternalLink
+  FileText, Settings, ShieldCheck, ExternalLink, ChevronDown
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
-// ── Status badge ──────────────────────────────────────────────────────────────
 const STATUS = {
   PUBLISHED: { dot: 'bg-green-500', label: 'Published', text: 'text-green-600 dark:text-green-400' },
   DRAFT:     { dot: 'bg-yellow-400', label: 'Draft',     text: 'text-yellow-600 dark:text-yellow-400' },
   DELETED:   { dot: 'bg-red-400',   label: 'Deleted',   text: 'text-red-500 dark:text-red-400' },
 };
 
-// ── Inline feedback banner ────────────────────────────────────────────────────
 function Feedback({ msg }: { msg: { type: 'success' | 'error'; text: string } | null }) {
   if (!msg) return null;
   return (
@@ -42,20 +40,37 @@ function Feedback({ msg }: { msg: { type: 'success' | 'error'; text: string } | 
 function StoriesTab() {
   const [posts, setPosts] = useState<PostListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [actionId, setActionId] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+
+  const fetchPosts = useCallback(async (p: number, append: boolean) => {
+    try {
+      const r = await postsApi.myPosts(p, 20);
+      const data = r.data.data;
+      setPosts(prev => append ? [...prev, ...data.content] : data.content);
+      setHasMore(!data.last);
+      setPage(p);
+    } catch { /* ignore */ }
+  }, []);
 
   useEffect(() => {
-    postsApi.myPosts(0, 50)
-      .then((r) => setPosts(r.data.data.content))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+    setLoading(true);
+    fetchPosts(0, false).finally(() => setLoading(false));
+  }, [fetchPosts]);
+
+  const loadMore = async () => {
+    setLoadingMore(true);
+    await fetchPosts(page + 1, true);
+    setLoadingMore(false);
+  };
 
   const handlePublish = async (id: string) => {
     setActionId(id);
     try {
       const res = await postsApi.publish(id);
-      setPosts((p) => p.map((post) => post.id === id ? { ...post, status: res.data.data.status as any, publishedAt: res.data.data.publishedAt } : post));
+      setPosts(p => p.map(post => post.id === id ? { ...post, status: res.data.data.status as any, publishedAt: res.data.data.publishedAt } : post));
     } catch { alert('Failed to publish.'); }
     finally { setActionId(null); }
   };
@@ -64,7 +79,7 @@ function StoriesTab() {
     setActionId(id);
     try {
       const res = await postsApi.unpublish(id);
-      setPosts((p) => p.map((post) => post.id === id ? { ...post, status: res.data.data.status as any } : post));
+      setPosts(p => p.map(post => post.id === id ? { ...post, status: res.data.data.status as any } : post));
     } catch { alert('Failed to unpublish.'); }
     finally { setActionId(null); }
   };
@@ -74,14 +89,14 @@ function StoriesTab() {
     setActionId(id);
     try {
       await postsApi.delete(id);
-      setPosts((p) => p.map((post) => post.id === id ? { ...post, status: 'DELETED' as any } : post));
+      setPosts(p => p.map(post => post.id === id ? { ...post, status: 'DELETED' as any } : post));
     } catch { alert('Failed to delete.'); }
     finally { setActionId(null); }
   };
 
   if (loading) return (
     <div className="space-y-4">
-      {[1, 2, 3].map((i) => (
+      {[1, 2, 3].map(i => (
         <div key={i} className="animate-pulse flex gap-4 py-5 border-b border-gray-100 dark:border-gray-800">
           <div className="flex-1 space-y-2">
             <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4" />
@@ -108,14 +123,12 @@ function StoriesTab() {
 
   return (
     <div>
-      {posts.map((post) => {
+      {posts.map(post => {
         const s = STATUS[post.status] ?? STATUS.DRAFT;
         const busy = actionId === post.id;
         return (
           <article key={post.id} className="group flex gap-4 py-5 border-b border-gray-100 dark:border-gray-800 last:border-0">
-            {/* Text */}
             <div className="flex-1 min-w-0">
-              {/* Status + date */}
               <div className="flex items-center gap-2 mb-1.5">
                 <span className={cn('flex items-center gap-1.5 text-xs font-medium', s.text)}>
                   <span className={cn('w-1.5 h-1.5 rounded-full', s.dot)} />
@@ -128,30 +141,17 @@ function StoriesTab() {
                     : formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
                 </span>
               </div>
-
-              {/* Title */}
-              <h3 className="font-bold text-gray-900 dark:text-white text-base line-clamp-1 mb-1">
-                {post.title}
-              </h3>
-
-              {/* Excerpt */}
+              <h3 className="font-bold text-gray-900 dark:text-white text-base line-clamp-1 mb-1">{post.title}</h3>
               {post.excerpt && (
-                <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1 mb-2 hidden sm:block">
-                  {post.excerpt}
-                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1 mb-2 hidden sm:block">{post.excerpt}</p>
               )}
-
-              {/* Stats + actions */}
               <div className="flex items-center gap-4 mt-1">
                 <span className="flex items-center gap-1 text-xs text-gray-400">
                   <Clock className="h-3.5 w-3.5" /> {post.readingTimeMinutes} min
                 </span>
                 <span className="text-xs text-gray-400">{post.viewCount} views</span>
                 <span className="text-xs text-gray-400">{post.likeCount} likes</span>
-
-                {/* Divider */}
                 <span className="ml-auto flex items-center gap-1">
-                  {/* View live */}
                   {post.status === 'PUBLISHED' && (
                     <Link href={`/blog/${post.slug}`} target="_blank"
                       className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -159,13 +159,12 @@ function StoriesTab() {
                       <ExternalLink className="h-4 w-4" />
                     </Link>
                   )}
-                  {/* Edit */}
-                  <Link href={`/profile/posts/${post.id}/edit`}
+                  {/* FIX #1: use post.slug not post.id */}
+                  <Link href={`/profile/posts/${post.slug}/edit`}
                     className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
                     title="Edit">
                     <Edit2 className="h-4 w-4" />
                   </Link>
-                  {/* Publish / Unpublish */}
                   {post.status === 'DRAFT' && (
                     <button onClick={() => handlePublish(post.id)} disabled={busy}
                       className="p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors disabled:opacity-40"
@@ -180,19 +179,17 @@ function StoriesTab() {
                       {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <EyeOff className="h-4 w-4" />}
                     </button>
                   )}
-                  {/* Delete */}
+                  {/* FIX #18: delete now shows spinner */}
                   {post.status !== 'DELETED' && (
                     <button onClick={() => handleDelete(post.id)} disabled={busy}
                       className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-40"
                       title="Delete">
-                      <Trash2 className="h-4 w-4" />
+                      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                     </button>
                   )}
                 </span>
               </div>
             </div>
-
-            {/* Thumbnail */}
             {post.coverImageUrl && (
               <div className="flex-shrink-0 w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden">
                 <img src={post.coverImageUrl} alt={post.title} className="w-full h-full object-cover" />
@@ -201,6 +198,17 @@ function StoriesTab() {
           </article>
         );
       })}
+
+      {/* FIX #6: Load more button */}
+      {hasMore && (
+        <div className="pt-6 flex justify-center">
+          <button onClick={loadMore} disabled={loadingMore}
+            className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 rounded-full hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50">
+            {loadingMore ? <Loader2 className="h-4 w-4 animate-spin" /> : <ChevronDown className="h-4 w-4" />}
+            {loadingMore ? 'Loading…' : 'Load more stories'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -248,6 +256,15 @@ function SettingsTab() {
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
+    // FIX #4: proper client-side validation
+    if (newPassword.length < 8) {
+      setPasswordMsg({ type: 'error', text: 'Password must be at least 8 characters.' });
+      return;
+    }
+    if (!/[A-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+      setPasswordMsg({ type: 'error', text: 'Password must contain at least one uppercase letter and one number.' });
+      return;
+    }
     if (newPassword !== confirmPassword) {
       setPasswordMsg({ type: 'error', text: 'New passwords do not match.' });
       return;
@@ -258,18 +275,15 @@ function SettingsTab() {
       await usersApi.changePassword({ currentPassword, newPassword });
       setPasswordMsg({ type: 'success', text: 'Password changed successfully!' });
       setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
-    } catch { setPasswordMsg({ type: 'error', text: 'Failed. Check your current password.' }); }
+    } catch { setPasswordMsg({ type: 'error', text: 'Failed — check that your current password is correct.' }); }
     finally { setChangingPassword(false); }
   };
 
   return (
     <div className="space-y-8 max-w-lg">
-
-      {/* Profile */}
       <section>
         <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-5">Public profile</h2>
         <form onSubmit={handleProfileSave} className="space-y-5">
-          {/* Avatar */}
           <div className="flex items-center gap-4">
             <button type="button" onClick={() => fileRef.current?.click()}
               className="relative group flex-shrink-0">
@@ -283,9 +297,7 @@ function SettingsTab() {
                 )}
               </div>
               <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                {uploadingAvatar
-                  ? <Loader2 className="h-5 w-5 text-white animate-spin" />
-                  : <Upload className="h-5 w-5 text-white" />}
+                {uploadingAvatar ? <Loader2 className="h-5 w-5 text-white animate-spin" /> : <Upload className="h-5 w-5 text-white" />}
               </div>
             </button>
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={uploadingAvatar} />
@@ -294,24 +306,18 @@ function SettingsTab() {
               <p className="text-xs text-gray-400 mt-0.5">Click to upload · JPG, PNG, WebP · max 5 MB</p>
             </div>
           </div>
-
-          {/* Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Display name</label>
-            <input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} required
+            <input type="text" value={displayName} onChange={e => setDisplayName(e.target.value)} required
               className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors" />
           </div>
-
-          {/* Bio */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Bio <span className="font-normal text-gray-400">(optional)</span></label>
-            <textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={3}
+            <textarea value={bio} onChange={e => setBio(e.target.value)} rows={3}
               placeholder="Tell readers about yourself…"
               className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none transition-colors placeholder-gray-400" />
           </div>
-
           <Feedback msg={profileMsg} />
-
           <button type="submit" disabled={saving}
             className="flex items-center gap-2 px-5 py-2.5 bg-gray-900 dark:bg-white hover:bg-gray-700 dark:hover:bg-gray-100 disabled:opacity-50 text-white dark:text-gray-900 font-medium rounded-full text-sm transition-colors">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
@@ -320,19 +326,18 @@ function SettingsTab() {
         </form>
       </section>
 
-      {/* Password — LOCAL only */}
       {user?.authProvider === 'LOCAL' && (
         <section className="pt-6 border-t border-gray-100 dark:border-gray-800">
           <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-5">Change password</h2>
           <form onSubmit={handlePasswordChange} className="space-y-4">
             {[
               { label: 'Current password', value: currentPassword, set: setCurrentPassword },
-              { label: 'New password',     value: newPassword,     set: setNewPassword },
+              { label: 'New password (min 8 chars, 1 uppercase, 1 number)', value: newPassword, set: setNewPassword },
               { label: 'Confirm new password', value: confirmPassword, set: setConfirmPassword },
             ].map(({ label, value, set }) => (
               <div key={label}>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{label}</label>
-                <input type="password" value={value} onChange={(e) => set(e.target.value)} required
+                <input type="password" value={value} onChange={e => set(e.target.value)} required
                   className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors" />
               </div>
             ))}
@@ -356,15 +361,27 @@ const TABS = [
 ] as const;
 type Tab = typeof TABS[number]['id'];
 
-export default function ProfilePage() {
-  const { user } = useAuth();
+function ProfileContent() {
+  const { user, isLoading } = useAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
   const activeTab = (searchParams.get('tab') ?? 'stories') as Tab;
 
   const setTab = (tab: Tab) => router.push(`/profile?tab=${tab}`, { scroll: false } as any);
 
-  if (!user) return null;
+  // FIX #7: show loading state + redirect guests
+  if (isLoading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    router.replace('/login');
+    return null;
+  }
 
   const joinedDate = user.memberSince
     ? new Date(user.memberSince).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
@@ -376,8 +393,6 @@ export default function ProfilePage() {
 
         {/* ── Sidebar ─────────────────────────────────────────────────────── */}
         <aside className="lg:w-56 xl:w-64 flex-shrink-0">
-
-          {/* Avatar + identity */}
           <div className="flex lg:flex-col items-center lg:items-start gap-4 mb-6">
             <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-full overflow-hidden ring-2 ring-gray-200 dark:ring-gray-700 flex-shrink-0">
               {user.avatarUrl ? (
@@ -398,12 +413,10 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Bio */}
           {user.bio && (
             <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-6 hidden lg:block">{user.bio}</p>
           )}
 
-          {/* Nav */}
           <nav className="hidden lg:flex flex-col gap-1 mb-6">
             {TABS.map(({ id, label, icon: Icon }) => (
               <button key={id} onClick={() => setTab(id)}
@@ -424,7 +437,6 @@ export default function ProfilePage() {
             )}
           </nav>
 
-          {/* Write CTA */}
           <Link href="/profile/posts/new"
             className="hidden lg:flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-gray-900 dark:bg-white hover:bg-gray-700 dark:hover:bg-gray-100 text-white dark:text-gray-900 font-medium rounded-full text-sm transition-colors">
             <PenSquare className="h-4 w-4" /> Write a story
@@ -433,8 +445,6 @@ export default function ProfilePage() {
 
         {/* ── Content ─────────────────────────────────────────────────────── */}
         <div className="flex-1 min-w-0">
-
-          {/* Mobile tab bar */}
           <div className="flex items-center gap-1 lg:hidden mb-6 border-b border-gray-200 dark:border-gray-800">
             {TABS.map(({ id, label }) => (
               <button key={id} onClick={() => setTab(id)}
@@ -449,7 +459,6 @@ export default function ProfilePage() {
             ))}
           </div>
 
-          {/* Tab heading + action */}
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-xl font-bold text-gray-900 dark:text-white">
               {activeTab === 'stories' ? 'Your stories' : 'Settings'}
@@ -467,5 +476,17 @@ export default function ProfilePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ProfilePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+      </div>
+    }>
+      <ProfileContent />
+    </Suspense>
   );
 }

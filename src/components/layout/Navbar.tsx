@@ -3,23 +3,28 @@
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'next/navigation';
-import { useState, useEffect, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { Search, Sun, Moon, PenSquare, LogOut, User, LayoutDashboard, ShieldCheck, X } from 'lucide-react';
 
-export function Navbar() {
+function NavbarInner() {
   const { theme, setTheme } = useTheme();
   const { user, logout } = useAuth();
   const router = useRouter();
+  // FIX #21: read q from URL so search bar reflects active search
+  const searchParams = useSearchParams();
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchOpen, setSearchOpen] = useState(false);   // mobile search expand
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') ?? '');
+  const [searchOpen, setSearchOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const mobileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => setMounted(true), []);
+
+  // FIX #21: keep search input in sync when URL changes (e.g. browser back/forward)
+  useEffect(() => { setSearchQuery(searchParams.get('q') ?? ''); }, [searchParams]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -43,8 +48,8 @@ export function Navbar() {
     e.preventDefault();
     if (searchQuery.trim()) {
       router.push(`/blog?q=${encodeURIComponent(searchQuery.trim())}`);
-      setSearchQuery('');
       setSearchOpen(false);
+      // don't clear the input — user can see what they searched
     }
   };
 
@@ -122,7 +127,13 @@ export function Navbar() {
                     aria-label="User menu"
                   >
                     {user.avatarUrl ? (
-                      <img src={user.avatarUrl} alt={user.displayName} className="w-full h-full object-cover" />
+                      // FIX #22: onError fallback to initial letter
+                      <img
+                        src={user.avatarUrl}
+                        alt={user.displayName}
+                        className="w-full h-full object-cover"
+                        onError={e => { e.currentTarget.style.display = 'none'; }}
+                      />
                     ) : (
                       (user.displayName ?? '?').charAt(0).toUpperCase()
                     )}
@@ -204,5 +215,15 @@ export function Navbar() {
 
       </div>
     </nav>
+  );
+}
+
+export function Navbar() {
+  return (
+    <Suspense fallback={
+      <nav className="sticky top-0 z-50 h-16 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200/70 dark:border-gray-700/70" />
+    }>
+      <NavbarInner />
+    </Suspense>
   );
 }
