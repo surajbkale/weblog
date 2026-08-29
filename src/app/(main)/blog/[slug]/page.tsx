@@ -8,12 +8,9 @@ import { CommentSection } from '@/components/comments/CommentSection';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { Eye, Clock, MessageCircle, ArrowLeft } from 'lucide-react';
-import { codeToHtml } from 'shiki';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 // INTERNAL_API_URL is injected at runtime by Docker for SSR fetches inside the container.
-// The frontend container cannot reach the API via `localhost` (resolves to itself);
-// host.docker.internal maps to the host where the API runs on port 8080.
 const SSR_API_BASE = process.env.INTERNAL_API_URL || API_BASE;
 
 interface Props {
@@ -70,50 +67,19 @@ async function getPost(slug: string): Promise<PostDetail | null> {
 }
 
 /**
- * Server-side syntax highlight all fenced code blocks inside Markdown HTML.
- * We replace ```lang\ncode\n``` patterns with shiki-highlighted HTML before
- * passing the result to marked, so shiki blocks are preserved as-is.
+ * Sanitizes the Tiptap-generated HTML on the server using DOMPurify to prevent XSS.
+ * Allows standard HTML tags used by Tiptap including iframes for video embeds.
  */
-async function highlightCode(markdown: string): Promise<string> {
-  const fenceRegex = /```(\w+)?\n([\s\S]*?)```/g;
-  const replacements: { from: string; to: string }[] = [];
-
-  for (const match of markdown.matchAll(fenceRegex)) {
-    const [full, lang = 'plaintext', code] = match;
-    try {
-      const html = await codeToHtml(code.trimEnd(), {
-        lang,
-        theme: 'github-dark',
-      });
-      replacements.push({ from: full, to: html });
-    } catch {
-      // if shiki doesn't know the lang, keep as-is
-    }
-  }
-
-  let result = markdown;
-  for (const { from, to } of replacements) {
-    result = result.replace(from, to);
-  }
-  return result;
-}
-
-/**
- * Renders Markdown to HTML using the `marked` library (same as the editor preview),
- * then sanitizes the output with DOMPurify to prevent XSS from user-supplied content.
- */
-async function renderContent(markdown: string): Promise<string> {
-  // Replace fenced code blocks with Shiki-highlighted HTML first
-  const withHighlights = await highlightCode(markdown);
-
-  // Use marked for consistent, complete Markdown rendering (handles tables,
-  // ordered lists, nested elements, inline code — all the things mdToHtml missed)
-  const { marked } = await import('marked');
-  const rawHtml = marked.parse(withHighlights, { async: false }) as string;
-
-  // Sanitize on the server with isomorphic-dompurify to eliminate XSS risk
+async function sanitizeContent(html: string): Promise<string> {
   const DOMPurify = (await import('isomorphic-dompurify')).default;
-  return DOMPurify.sanitize(rawHtml);
+  return DOMPurify.sanitize(html, {
+    ADD_TAGS: ['iframe', 'video', 'source', 'figure', 'figcaption'],
+    ADD_ATTR: [
+      'src', 'controls', 'allowfullscreen', 'allow', 'frameborder',
+      'width', 'height', 'data-type', 'class', 'target', 'rel',
+    ],
+    FORCE_BODY: false,
+  });
 }
 
 export default async function PostDetailPage({ params }: Props) {
@@ -121,7 +87,7 @@ export default async function PostDetailPage({ params }: Props) {
   const post = await getPost(slug);
   if (!post) notFound();
 
-  const renderedContent = await renderContent(post.content);
+  const renderedContent = await sanitizeContent(post.content);
 
   const publishedDate = post.publishedAt
     ? format(new Date(post.publishedAt), 'MMMM d, yyyy')
@@ -180,7 +146,7 @@ export default async function PostDetailPage({ params }: Props) {
         </div>
       )}
 
-      {/* Post content — sanitized server-side by DOMPurify */}
+      {/* Post content — sanitized HTML from Tiptap rich text editor */}
       <article
         className="prose-custom text-gray-700 dark:text-gray-300 leading-7 mb-12"
         dangerouslySetInnerHTML={{ __html: renderedContent }}

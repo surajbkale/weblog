@@ -1,16 +1,16 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { postsApi } from '@/lib/api/posts';
 import { categoriesApi } from '@/lib/api/categories';
 import { CategoryResponse } from '@/types/post';
-import { Navbar } from '@/components/layout/Navbar';
 import { ArrowLeft, Send, Save, Upload, X, Loader2 } from 'lucide-react';
 import { mediaApi } from '@/lib/api/media';
 import { cn } from '@/lib/utils/cn';
+import { RichTextEditor } from '@/components/editor/RichTextEditor';
 
 export default function NewPostPage() {
   const { user, isLoading } = useAuth();
@@ -27,17 +27,6 @@ export default function NewPostPage() {
   const [uploadingCover, setUploadingCover] = useState(false);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
-  const [tab, setTab] = useState<'write' | 'preview'>('write');
-  const [previewHtml, setPreviewHtml] = useState('');
-
-  // FIX #24: auto-resize title
-  const titleRef = useRef<HTMLTextAreaElement>(null);
-  const resizeTitle = () => {
-    if (titleRef.current) {
-      titleRef.current.style.height = 'auto';
-      titleRef.current.style.height = titleRef.current.scrollHeight + 'px';
-    }
-  };
 
   useEffect(() => { if (!isLoading && !user) router.replace('/login'); }, [user, isLoading, router]);
 
@@ -45,20 +34,8 @@ export default function NewPostPage() {
     categoriesApi.list().then(r => setCategories(r.data.data)).catch(() => {});
   }, []);
 
-  // Render Markdown preview with marked, sanitized by DOMPurify to prevent XSS
-  useEffect(() => {
-    if (tab !== 'preview' || !content) { setPreviewHtml(''); return; }
-    Promise.all([
-      import('marked'),
-      import('isomorphic-dompurify'),
-    ]).then(([{ marked }, { default: DOMPurify }]) => {
-      const rawHtml = marked.parse(content, { async: false }) as string;
-      setPreviewHtml(DOMPurify.sanitize(rawHtml));
-    });
-  }, [tab, content]);
-
   const savePost = useCallback(async (publish: boolean) => {
-    if (!title.trim() || !content.trim()) {
+    if (!title.trim() || !content.trim() || content === '<p></p>') {
       alert('Title and content are required.');
       return;
     }
@@ -83,7 +60,7 @@ export default function NewPostPage() {
     finally { setSaving(false); setPublishing(false); }
   }, [title, content, excerpt, coverImageUrl, selectedCategories, tags, router]);
 
-  // FIX #25: Ctrl+S to save draft
+  // Ctrl+S to save draft
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); savePost(false); }
@@ -113,10 +90,11 @@ export default function NewPostPage() {
   if (isLoading || !user) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors">
-      <Navbar />
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
-        <div className="flex items-center justify-between mb-6">
+    <div className="min-h-screen bg-white dark:bg-gray-950 transition-colors">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+
+        {/* Top bar */}
+        <div className="flex items-center justify-between mb-8">
           <Link href="/profile" className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
             <ArrowLeft className="h-4 w-4" /> My Stories
           </Link>
@@ -135,51 +113,36 @@ export default function NewPostPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-4">
-            {/* FIX #24: auto-resize title textarea */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Editor column */}
+          <div className="lg:col-span-2">
+            {/* Title */}
             <textarea
-              ref={titleRef}
               value={title}
-              onChange={e => { setTitle(e.target.value); resizeTitle(); }}
-              onInput={resizeTitle}
-              placeholder="Post title…"
+              onChange={e => setTitle(e.target.value)}
+              onInput={e => {
+                const el = e.currentTarget;
+                el.style.height = 'auto';
+                el.style.height = el.scrollHeight + 'px';
+              }}
+              placeholder="Title"
               rows={1}
               style={{ overflow: 'hidden' }}
-              className="w-full px-0 py-2 text-3xl font-extrabold text-gray-900 dark:text-white bg-transparent border-none outline-none resize-none placeholder-gray-300 dark:placeholder-gray-700"
+              className="w-full px-0 pt-0 pb-4 text-4xl font-extrabold text-gray-900 dark:text-white bg-transparent border-none outline-none resize-none placeholder-gray-200 dark:placeholder-gray-700 border-b border-gray-100 dark:border-gray-800 mb-6"
             />
 
-            <div className="flex border-b border-gray-200 dark:border-gray-700">
-              {(['write', 'preview'] as const).map(t => (
-                <button key={t} onClick={() => setTab(t)}
-                  className={cn('px-5 py-2 text-sm font-medium capitalize transition-colors border-b-2 -mb-px',
-                    tab === t
-                      ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-                  )}>
-                  {t}
-                </button>
-              ))}
-            </div>
-
-            {tab === 'write' ? (
-              <textarea value={content} onChange={e => setContent(e.target.value)}
-                placeholder={`Write your post in Markdown…\n\n## Heading\n\n**bold**, *italic*, \`code\``}
-                rows={28}
-                className="w-full px-0 py-2 text-gray-800 dark:text-gray-200 bg-transparent border-none outline-none resize-none font-mono text-sm leading-7 placeholder-gray-300 dark:placeholder-gray-700" />
-            ) : (
-              /* FIX #5: render real HTML from Markdown */
-              <div className="prose-custom min-h-[500px] py-2 text-gray-800 dark:text-gray-200">
-                {previewHtml
-                  ? <div dangerouslySetInnerHTML={{ __html: previewHtml }} />
-                  : <p className="text-gray-400 italic">Nothing to preview yet…</p>}
-              </div>
-            )}
+            {/* Rich text editor */}
+            <RichTextEditor
+              content={content}
+              onChange={setContent}
+              placeholder="Tell your story…"
+            />
           </div>
 
-          <aside className="space-y-5">
+          {/* Sidebar */}
+          <aside className="space-y-5 lg:pt-1">
             {/* Cover image */}
-            <div className="bg-white dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+            <div className="bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Cover Image</h3>
               {coverImageUrl ? (
                 <div className="relative">
@@ -200,20 +163,20 @@ export default function NewPostPage() {
               )}
             </div>
 
-            {/* Excerpt with char count — FIX #14 */}
-            <div className="bg-white dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+            {/* Excerpt */}
+            <div className="bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Excerpt</h3>
                 <span className={cn('text-xs', excerpt.length > 450 ? 'text-orange-500' : 'text-gray-400')}>{excerpt.length}/500</span>
               </div>
               <textarea value={excerpt} onChange={e => setExcerpt(e.target.value)}
                 placeholder="Brief description for previews…" rows={3} maxLength={500}
-                className="w-full text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 resize-none transition-colors placeholder-gray-400" />
+                className="w-full text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 resize-none transition-colors placeholder-gray-400" />
             </div>
 
             {/* Categories */}
             {categories.length > 0 && (
-              <div className="bg-white dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+              <div className="bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Categories</h3>
                 <div className="flex flex-wrap gap-2">
                   {categories.map(cat => (
@@ -230,12 +193,12 @@ export default function NewPostPage() {
             )}
 
             {/* Tags */}
-            <div className="bg-white dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+            <div className="bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Tags <span className="font-normal text-gray-400 text-xs">({tags.length}/10)</span></h3>
               <input type="text" value={tagInput} onChange={e => setTagInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTag(); } }}
                 placeholder="Add tag, press Enter"
-                className="w-full text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white placeholder-gray-400" />
+                className="w-full text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white placeholder-gray-400" />
               {tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-3">
                   {tags.map(tag => (
