@@ -130,19 +130,30 @@ body {
 
 /* Editor canvas */
 .rich-editor-wrapper {
-  min-height: 480px;
-  /* Extra padding so clicking below the last block still hits the wrapper
-     and triggers the click-to-focus-end handler in RichTextEditor.tsx */
-  padding-bottom: 120px;
+  min-height: 60vh;   /* mobile default */
+  /* Extra padding so clicking below the last block still hits the wrapper */
+  padding-bottom: 60px;
   cursor: text;
+}
+@media (min-width: 640px) {
+  .rich-editor-wrapper {
+    min-height: 480px;
+    padding-bottom: 120px;
+  }
 }
 
 .rich-editor {
-  min-height: 480px;
+  min-height: 60vh;
   outline: none;
-  font-size: 1.125rem;
+  font-size: 1rem;
   line-height: 1.85;
   color: #1f2937;
+}
+@media (min-width: 640px) {
+  .rich-editor {
+    min-height: 480px;
+    font-size: 1.125rem;
+  }
 }
 .dark .rich-editor {
   color: #e5e7eb;
@@ -203,25 +214,54 @@ body {
   color: #f87171;
 }
 
-/* Code blocks (lowlight) */
-.rich-editor pre {
+/* ─── Code blocks ────────────────────────────────────────────────────────── */
+
+/* NodeView wrapper — the toolbar + pre live inside this */
+.code-block-wrapper {
+  margin: 1.5rem 0;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+}
+
+/* Toolbar above the code block */
+.code-block-toolbar {
+  user-select: none;
+}
+
+/* The <pre> element inside the NodeView */
+.code-block-pre,
+.rich-editor pre,
+.prose-custom pre {
   background: #0d1117;
   color: #e6edf3;
-  border-radius: 0.75rem;
+  border-radius: 0;
   padding: 1.25rem 1.5rem;
   overflow-x: auto;
-  margin: 1.5rem 0;
+  margin: 0;
   font-size: 0.875rem;
   line-height: 1.7;
   font-family: var(--font-geist-mono), monospace;
 }
-.rich-editor pre code {
+
+/* prose-custom (reader page) — restore border-radius since no toolbar */
+.prose-custom pre {
+  border-radius: 0.75rem;
+  margin: 1.5rem 0;
+}
+
+/* Reset code inside pre */
+.code-block-pre code,
+.rich-editor pre code,
+.prose-custom pre code {
   background: none;
   color: inherit;
   padding: 0;
   border-radius: 0;
   font-size: inherit;
+  font-family: inherit;
 }
+
 
 /* Horizontal rule */
 .rich-editor hr {
@@ -397,4 +437,47 @@ body {
 
 @keyframes ProseMirror-cursor-blink {
   to { visibility: hidden; }
+}
+
+/* ─── Code block copy button ─────────────────────────────────────────────────
+   Injected by BlogContent.tsx into every <pre> element on the reader page.  */
+
+.copy-code-btn {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.6rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.375rem;
+  color: #9ca3af;
+  font-size: 0.7rem;
+  font-family: var(--font-geist-sans), sans-serif;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
+  /* stays above code text */
+  z-index: 10;
+}
+
+/* Show on hover of the entire code block */
+pre:hover .copy-code-btn,
+pre:focus-within .copy-code-btn {
+  opacity: 1;
+}
+
+.copy-code-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #e5e7eb;
+}
+
+/* "Copied!" success state */
+.copy-code-btn.copied {
+  opacity: 1;
+  background: rgba(34, 197, 94, 0.15);
+  border-color: rgba(34, 197, 94, 0.3);
+  color: #4ade80;
 }

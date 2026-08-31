@@ -8,6 +8,8 @@ import { CommentSection } from '@/components/comments/CommentSection';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { Eye, Clock, MessageCircle, ArrowLeft } from 'lucide-react';
+import { highlightCodeBlocks } from '@/lib/highlightCode';
+import { BlogContent } from '@/components/blog/BlogContent';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 // INTERNAL_API_URL is injected at runtime by Docker for SSR fetches inside the container.
@@ -67,12 +69,17 @@ async function getPost(slug: string): Promise<PostDetail | null> {
 }
 
 /**
- * Sanitizes the Tiptap-generated HTML on the server using DOMPurify to prevent XSS.
- * Allows standard HTML tags used by Tiptap including iframes for video embeds.
+ * Processes Tiptap-generated HTML for safe, highlighted rendering:
+ * 1. Re-highlights code blocks with rehype-highlight (adds hljs-* classes)
+ * 2. Sanitizes with DOMPurify to prevent XSS (preserves hljs-* class attr)
  */
-async function sanitizeContent(html: string): Promise<string> {
+async function processContent(html: string): Promise<string> {
+  // Step 1: syntax-highlight code blocks
+  const highlighted = await highlightCodeBlocks(html);
+
+  // Step 2: sanitize — run AFTER highlight so hljs-* spans are preserved
   const DOMPurify = (await import('isomorphic-dompurify')).default;
-  return DOMPurify.sanitize(html, {
+  return DOMPurify.sanitize(highlighted, {
     ADD_TAGS: ['iframe', 'video', 'source', 'figure', 'figcaption'],
     ADD_ATTR: [
       'src', 'controls', 'allowfullscreen', 'allow', 'frameborder',
@@ -87,7 +94,7 @@ export default async function PostDetailPage({ params }: Props) {
   const post = await getPost(slug);
   if (!post) notFound();
 
-  const renderedContent = await sanitizeContent(post.content);
+  const renderedContent = await processContent(post.content);
 
   const publishedDate = post.publishedAt
     ? format(new Date(post.publishedAt), 'MMMM d, yyyy')
@@ -146,10 +153,10 @@ export default async function PostDetailPage({ params }: Props) {
         </div>
       )}
 
-      {/* Post content — sanitized HTML from Tiptap rich text editor */}
-      <article
+      {/* Post content — sanitized + syntax-highlighted HTML with copy buttons */}
+      <BlogContent
+        html={renderedContent}
         className="prose-custom text-gray-700 dark:text-gray-300 leading-7 mb-12"
-        dangerouslySetInnerHTML={{ __html: renderedContent }}
       />
 
       {/* Tags */}

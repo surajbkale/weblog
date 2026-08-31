@@ -38,8 +38,6 @@ export function BlockMenu({ editor }: Props) {
     closeAll();
     try {
       const url = await mediaApi.upload(file);
-      // Insert the image, then split the block so the cursor lands in a
-      // new empty paragraph below the image (not still inside the same one).
       editor.chain()
         .focus()
         .setImage({ src: url })
@@ -71,13 +69,10 @@ export function BlockMenu({ editor }: Props) {
   const handleVideoUrl = useCallback(() => {
     const raw = videoUrl.trim();
     if (!raw) return;
-
     const embedUrl = toEmbedUrl(raw);
     if (embedUrl) {
-      // setVideoEmbed already appends a trailing paragraph (defined in VideoNode.ts)
       editor.chain().focus().setVideoEmbed(raw).run();
     } else {
-      // setVideo already appends a trailing paragraph (defined in VideoNode.ts)
       editor.chain().focus().setVideo(raw).run();
     }
     closeAll();
@@ -128,7 +123,7 @@ export function BlockMenu({ editor }: Props) {
     { type: 'divider',      icon: Minus,         label: 'Divider',       description: 'Horizontal rule' },
     { type: 'bullet',       icon: List,          label: 'Bullet list',   description: 'Unordered list' },
     { type: 'ordered',      icon: ListOrdered,   label: 'Numbered list', description: 'Ordered list' },
-    { type: 'quote',        icon: Quote,         label: 'Quote',         description: 'Blockquote section' },
+    { type: 'quote',        icon: Quote,         label: 'Blockquote',    description: 'Blockquote section' },
   ];
 
   return (
@@ -139,7 +134,12 @@ export function BlockMenu({ editor }: Props) {
 
       <FloatingMenu
         editor={editor}
-        tippyOptions={{ duration: 150, placement: 'left-start', offset: [0, 16] }}
+        tippyOptions={{
+          duration: 150,
+          // Place FloatingMenu to the LEFT of the empty line with a 16px gap
+          placement: 'left-start',
+          offset: [0, 16],
+        }}
         shouldShow={({ state }) => {
           const { selection, doc } = state;
           const { $anchor, empty } = selection;
@@ -152,6 +152,13 @@ export function BlockMenu({ editor }: Props) {
           return isRootDepth && isEmptyTextBlock;
         }}
       >
+        {/*
+          The FloatingMenu content is rendered inside a tippy.js container
+          that is already positioned correctly relative to the cursor line.
+          We use `absolute` positioning for the popups — they open to the RIGHT
+          of the + button.  `max-w-[calc(100vw-5rem)]` prevents overflow on
+          very narrow screens.
+        */}
         <div className="relative flex items-center">
           {uploading ? (
             <div className="w-7 h-7 flex items-center justify-center">
@@ -174,7 +181,7 @@ export function BlockMenu({ editor }: Props) {
 
           {/* Block picker popup */}
           {open && (
-            <div className="absolute left-10 top-0 z-50 w-64 bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 py-1.5 overflow-hidden animate-in fade-in slide-in-from-left-2 duration-150">
+            <div className="block-menu-popup absolute left-10 top-0 z-50 w-64 max-w-[calc(100vw-5rem)] bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 py-1.5 overflow-hidden animate-in fade-in slide-in-from-left-2 duration-150">
               <div className="flex items-center justify-between px-3 pt-1 pb-2 border-b border-gray-100 dark:border-gray-800">
                 <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Insert</span>
                 <button onClick={closeAll} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
@@ -201,7 +208,7 @@ export function BlockMenu({ editor }: Props) {
 
           {/* Video URL input popup */}
           {videoUrlMode && (
-            <div className="absolute left-10 top-0 z-50 w-72 bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 p-3 animate-in fade-in slide-in-from-left-2 duration-150">
+            <div className="block-menu-popup absolute left-10 top-0 z-50 w-72 max-w-[calc(100vw-5rem)] bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 p-3 animate-in fade-in slide-in-from-left-2 duration-150">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">Embed video</span>
                 <button onClick={closeAll} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">

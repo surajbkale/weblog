@@ -6,15 +6,12 @@ import ImageExtension from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
 import Underline from '@tiptap/extension-underline';
 import Placeholder from '@tiptap/extension-placeholder';
-import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
-import { all, createLowlight } from 'lowlight';
 import { VideoNode } from './VideoNode';
 import { TrailingNode } from './TrailingNode';
 import { FloatingToolbar } from './FloatingToolbar';
 import { BlockMenu } from './BlockMenu';
+import { CodeBlockWithLangSelector } from './CodeBlockWithLangSelector';
 import { useEffect, useCallback } from 'react';
-
-const lowlight = createLowlight(all);
 
 interface Props {
   content: string;
@@ -44,11 +41,7 @@ export function RichTextEditor({
         HTMLAttributes: { class: 'editor-image' },
         allowBase64: false,
       }),
-      CodeBlockLowlight.configure({
-        lowlight,
-        HTMLAttributes: { class: 'code-block' },
-        defaultLanguage: 'plaintext',
-      }),
+      CodeBlockWithLangSelector,
       Placeholder.configure({
         placeholder,
         emptyEditorClass: 'is-editor-empty',

@@ -88,16 +88,22 @@ export function FloatingToolbar({ editor }: Props) {
   return (
     <BubbleMenu
       editor={editor}
-      tippyOptions={{ duration: 150, placement: 'top' }}
+      tippyOptions={{
+        duration: 150,
+        placement: 'top',
+        maxWidth: 'calc(100vw - 16px)',
+      }}
       shouldShow={({ editor, state }) => {
         const { selection } = state;
         const { empty } = selection;
-        // Don't show for image / video nodes
         if (editor.isActive('image') || editor.isActive('video')) return false;
         return !empty;
       }}
     >
-      <div className="bubble-menu flex items-center gap-0.5 bg-gray-900 dark:bg-gray-800 rounded-lg shadow-xl border border-gray-700 p-1">
+      {/* flex-wrap so buttons reflow to a 2nd row on very small screens */}
+      <div className="bubble-menu flex flex-wrap items-center gap-0.5 bg-gray-900 dark:bg-gray-800 rounded-lg shadow-xl border border-gray-700 p-1"
+        style={{ maxWidth: 'min(360px, calc(100vw - 16px))' }}
+      >
         {/* Formatting buttons */}
         {tools.map(({ icon: Icon, label, action, isActive }) => (
           <button
@@ -123,9 +129,12 @@ export function FloatingToolbar({ editor }: Props) {
               autoFocus
               value={linkHref}
               onChange={(e) => setLinkHref(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') applyLink(); if (e.key === 'Escape') setShowLinkInput(false); }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') applyLink();
+                if (e.key === 'Escape') setShowLinkInput(false);
+              }}
               placeholder="https://…"
-              className="text-xs bg-gray-800 text-white border border-gray-600 rounded px-2 py-1 w-40 outline-none focus:border-blue-400"
+              className="text-xs bg-gray-800 text-white border border-gray-600 rounded px-2 py-1 w-32 sm:w-40 outline-none focus:border-blue-400"
             />
             <button
               onMouseDown={(e) => { e.preventDefault(); applyLink(); }}
