@@ -38,12 +38,13 @@ export function BlockMenu({ editor }: Props) {
     closeAll();
     try {
       const url = await mediaApi.upload(file);
-      // Insert image followed by an empty paragraph so the cursor
-      // has a text block to land in below the image.
-      editor.chain().focus().insertContent([
-        { type: 'image', attrs: { src: url } },
-        { type: 'paragraph' },
-      ]).run();
+      // Insert the image, then split the block so the cursor lands in a
+      // new empty paragraph below the image (not still inside the same one).
+      editor.chain()
+        .focus()
+        .setImage({ src: url })
+        .splitBlock()
+        .run();
     } catch {
       alert('Image upload failed. Please try again.');
     } finally {

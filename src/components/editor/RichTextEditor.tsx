@@ -9,9 +9,10 @@ import Placeholder from '@tiptap/extension-placeholder';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import { all, createLowlight } from 'lowlight';
 import { VideoNode } from './VideoNode';
+import { TrailingNode } from './TrailingNode';
 import { FloatingToolbar } from './FloatingToolbar';
 import { BlockMenu } from './BlockMenu';
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 
 const lowlight = createLowlight(all);
 
@@ -31,9 +32,7 @@ export function RichTextEditor({
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-        // We use CodeBlockLowlight separately for syntax highlighting
         codeBlock: false,
-        // Disable the heading shortcut conflicts
         heading: { levels: [1, 2, 3, 4] },
       }),
       Underline,
@@ -55,6 +54,9 @@ export function RichTextEditor({
         emptyEditorClass: 'is-editor-empty',
       }),
       VideoNode,
+      // Always keeps an empty paragraph at the end of the document so the
+      // cursor can always land below any block-level media node.
+      TrailingNode,
     ],
     content: content || '',
     editable,
@@ -85,10 +87,32 @@ export function RichTextEditor({
     editor.setEditable(editable);
   }, [editor, editable]);
 
+  /**
+   * When the user clicks in the empty space BELOW all editor content,
+   * move the cursor to the end of the document. Without this, clicking
+   * below a block-level node in a short document does nothing because the
+   * click lands on the wrapper div, not on any ProseMirror node.
+   */
+  const handleWrapperClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!editor || !editable) return;
+
+    const proseMirrorEl = e.currentTarget.querySelector<HTMLElement>('.ProseMirror');
+    if (!proseMirrorEl) return;
+
+    const rect = proseMirrorEl.getBoundingClientRect();
+    // If the click is below the ProseMirror content, focus the end
+    if (e.clientY > rect.bottom) {
+      editor.commands.focus('end');
+    }
+  }, [editor, editable]);
+
   if (!editor) return null;
 
   return (
-    <div className="rich-editor-wrapper relative">
+    <div
+      className="rich-editor-wrapper relative"
+      onClick={handleWrapperClick}
+    >
       {editable && <FloatingToolbar editor={editor} />}
       {editable && <BlockMenu editor={editor} />}
       <EditorContent editor={editor} />
