@@ -111,20 +111,22 @@ export const VideoNode = Node.create<VideoOptions>({
       setVideo:
         (src: string, caption = '') =>
         ({ commands }) =>
-          commands.insertContent({
-            type: this.name,
-            attrs: { src, embed: false, caption },
-          }),
+          // Insert the video node followed by an empty paragraph so the
+          // cursor has a text block to land in after the media.
+          commands.insertContent([
+            { type: this.name, attrs: { src, embed: false, caption } },
+            { type: 'paragraph' },
+          ]),
 
       setVideoEmbed:
         (url: string) =>
         ({ commands }) => {
           const embedUrl = toEmbedUrl(url);
           if (!embedUrl) return false;
-          return commands.insertContent({
-            type: this.name,
-            attrs: { src: embedUrl, embed: true, caption: '' },
-          });
+          return commands.insertContent([
+            { type: this.name, attrs: { src: embedUrl, embed: true, caption: '' } },
+            { type: 'paragraph' },
+          ]);
         },
     };
   },

@@ -38,7 +38,12 @@ export function BlockMenu({ editor }: Props) {
     closeAll();
     try {
       const url = await mediaApi.upload(file);
-      editor.chain().focus().setImage({ src: url }).run();
+      // Insert image followed by an empty paragraph so the cursor
+      // has a text block to land in below the image.
+      editor.chain().focus().insertContent([
+        { type: 'image', attrs: { src: url } },
+        { type: 'paragraph' },
+      ]).run();
     } catch {
       alert('Image upload failed. Please try again.');
     } finally {
@@ -68,9 +73,10 @@ export function BlockMenu({ editor }: Props) {
 
     const embedUrl = toEmbedUrl(raw);
     if (embedUrl) {
+      // setVideoEmbed already appends a trailing paragraph (defined in VideoNode.ts)
       editor.chain().focus().setVideoEmbed(raw).run();
     } else {
-      // Treat as direct video URL
+      // setVideo already appends a trailing paragraph (defined in VideoNode.ts)
       editor.chain().focus().setVideo(raw).run();
     }
     closeAll();
