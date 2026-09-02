@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { BookOpen, Loader2, XCircle } from 'lucide-react';
 import axios from 'axios';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth, markSessionActive } from '@/context/AuthContext';
 import { apiClient, setAccessToken } from '@/lib/api/client';
 import { LoginResponse, UserProfileResponse } from '@/types/auth';
 import { ApiResponse } from '@/types/api';
@@ -46,6 +46,7 @@ export default function OAuthCallbackPage() {
         );
 
         // Step 3: Update global auth state
+        markSessionActive(); // persist hint so page refresh retriggers checkAuth
         login(loginData, profileRes.data.data);
 
         // Step 4: Redirect to dashboard
