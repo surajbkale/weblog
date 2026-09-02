@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Mail, Lock, AlertCircle } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth, markSessionActive } from '@/context/AuthContext';
 import { apiClient } from '@/lib/api/client';
 import { OAuthButton } from '@/components/ui/OAuthButton';
 import { LoginResponse, UserProfileResponse } from '@/types/auth';
@@ -42,6 +42,7 @@ export default function LoginPage() {
         { headers: { Authorization: `Bearer ${loginData.accessToken}` } },
       );
 
+      markSessionActive(); // persist hint before state update so refresh survives hard-reload
       login(loginData, profileRes.data.data);
       router.push('/dashboard');
     } catch (err: any) {
