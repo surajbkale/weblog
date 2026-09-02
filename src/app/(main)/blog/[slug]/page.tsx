@@ -69,24 +69,12 @@ async function getPost(slug: string): Promise<PostDetail | null> {
 }
 
 /**
- * Processes Tiptap-generated HTML for safe, highlighted rendering:
- * 1. Re-highlights code blocks with rehype-highlight (adds hljs-* classes)
- * 2. Sanitizes with DOMPurify to prevent XSS (preserves hljs-* class attr)
+ * Processes Tiptap-generated HTML for safe, highlighted rendering.
+ * highlight + sanitize are done in a single server-side unified pipeline
+ * (rehype-highlight → rehype-sanitize) with zero browser dependencies.
  */
 async function processContent(html: string): Promise<string> {
-  // Step 1: syntax-highlight code blocks
-  const highlighted = await highlightCodeBlocks(html);
-
-  // Step 2: sanitize — run AFTER highlight so hljs-* spans are preserved
-  const DOMPurify = (await import('isomorphic-dompurify')).default;
-  return DOMPurify.sanitize(highlighted, {
-    ADD_TAGS: ['iframe', 'video', 'source', 'figure', 'figcaption'],
-    ADD_ATTR: [
-      'src', 'controls', 'allowfullscreen', 'allow', 'frameborder',
-      'width', 'height', 'data-type', 'class', 'target', 'rel',
-    ],
-    FORCE_BODY: false,
-  });
+  return highlightCodeBlocks(html);
 }
 
 export default async function PostDetailPage({ params }: Props) {
