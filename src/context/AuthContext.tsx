@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { UserProfileResponse, LoginResponse } from '@/types/auth';
 import { apiClient, setAccessToken } from '@/lib/api/client';
@@ -37,6 +37,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
+  // ── Guards ──────────────────────────────────────────────────────────────────
+  // React 18 Strict Mode double-invokes effects in development. Without this
+  // guard, checkAuth() fires twice: the first call rotates the refresh token,
+  // the second call receives the now-revoked token → backend detects "reuse
+  // attack" → revokes ALL sessions → user is logged out on every Ctrl+R.
+  const isRefreshing = useRef(false);
+
   const login = (data: LoginResponse, userProfile: UserProfileResponse) => {
     setAccessToken(data.accessToken);
     setUser(userProfile);
@@ -57,10 +64,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const checkAuth = async () => {
+    // Prevent concurrent refresh calls (covers Strict Mode double-invoke AND
+    // multiple tabs racing on page load).
+    if (isRefreshing.current) return;
+    isRefreshing.current = true;
+
     setIsLoading(true);
     try {
-      // Step 1: Try to get a fresh access token using the HttpOnly refresh cookie.
-      // This is the correct initial auth check — we never call /me without a valid token.
+      // Step 1: Exchange the HttpOnly refresh cookie for a fresh access token.
       const refreshRes = await axios.post<ApiResponse<LoginResponse>>(
         `${API_BASE_URL}/api/v1/auth/refresh`,
         {},
@@ -70,7 +81,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const newToken = refreshRes.data.data.accessToken;
       setAccessToken(newToken);
 
-      // Step 2: Now that we have a valid token in memory, fetch the full user profile.
+      // Step 2: Fetch the full user profile using the new token.
       const profileRes = await apiClient.get<ApiResponse<UserProfileResponse>>(
         '/api/v1/users/me'
       );
@@ -83,6 +94,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       clearSessionHint(); // token gone — clear hint to skip future calls
     } finally {
       setIsLoading(false);
+      isRefreshing.current = false;
     }
   };
 
@@ -112,10 +124,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
-    // Restore session on every full page load / tab open.
     checkAuth();
 
-    // Listen for unauthorized events dispatched by the Axios interceptor.
+    // Listen for 401s that the Axios interceptor cannot recover from.
     const handleUnauthorized = () => {
       setUser(null);
       setAccessToken(null);
@@ -124,7 +135,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     window.addEventListener('auth-unauthorized', handleUnauthorized);
     return () => window.removeEventListener('auth-unauthorized', handleUnauthorized);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
