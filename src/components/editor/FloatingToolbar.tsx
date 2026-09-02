@@ -3,7 +3,7 @@
 import { BubbleMenu, Editor } from '@tiptap/react';
 import {
   Bold, Italic, Underline, Strikethrough,
-  Code, Link2, Heading2, Heading3, Quote,
+  Code, Link2, Heading2, Heading3, Quote, Trash2,
 } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { cn } from '@/lib/utils/cn';
@@ -122,7 +122,7 @@ export function FloatingToolbar({ editor }: Props) {
         {/* Divider */}
         <span className="w-px h-5 bg-gray-600 mx-1" />
 
-        {/* Link button */}
+        {/* Link button + prominent Remove-link button */}
         {showLinkInput ? (
           <div className="flex items-center gap-1 px-1">
             <input
@@ -144,24 +144,38 @@ export function FloatingToolbar({ editor }: Props) {
             </button>
           </div>
         ) : (
-          <button
-            title="Link"
-            onMouseDown={(e) => {
-              e.preventDefault();
-              if (editor.isActive('link')) {
-                editor.chain().focus().unsetLink().run();
-              } else {
+          <div className="flex items-center gap-0.5">
+            {/* Edit / set link */}
+            <button
+              title={editor.isActive('link') ? 'Edit link' : 'Add link'}
+              onMouseDown={(e) => {
+                e.preventDefault();
                 setLinkHref(editor.getAttributes('link').href ?? '');
                 setShowLinkInput(true);
-              }
-            }}
-            className={cn(
-              'p-1.5 rounded text-gray-300 hover:text-white hover:bg-gray-700 transition-colors',
-              editor.isActive('link') && 'bg-gray-700 text-white'
+              }}
+              className={cn(
+                'p-1.5 rounded text-gray-300 hover:text-white hover:bg-gray-700 transition-colors',
+                editor.isActive('link') && 'bg-gray-700 text-white'
+              )}
+            >
+              <Link2 className="h-4 w-4" />
+            </button>
+
+            {/* Remove link — only shown when cursor is inside a link */}
+            {editor.isActive('link') && (
+              <button
+                title="Remove link"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  editor.chain().focus().unsetLink().run();
+                }}
+                className="flex items-center gap-1 px-2 py-1 rounded bg-red-600 hover:bg-red-700 text-white text-xs font-medium transition-colors"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Remove
+              </button>
             )}
-          >
-            <Link2 className="h-4 w-4" />
-          </button>
+          </div>
         )}
       </div>
     </BubbleMenu>

@@ -2,7 +2,7 @@
 
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import ImageExtension from '@tiptap/extension-image';
+import { ImageWithDelete } from './ImageNodeView';
 import Link from '@tiptap/extension-link';
 import Underline from '@tiptap/extension-underline';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -37,10 +37,7 @@ export function RichTextEditor({
         openOnClick: false,
         HTMLAttributes: { class: 'editor-link', rel: 'noopener noreferrer', target: '_blank' },
       }),
-      ImageExtension.configure({
-        HTMLAttributes: { class: 'editor-image' },
-        allowBase64: false,
-      }),
+      ImageWithDelete,
       CodeBlockWithLangSelector,
       Placeholder.configure({
         placeholder,
@@ -55,7 +52,10 @@ export function RichTextEditor({
     editable,
     editorProps: {
       attributes: {
-        class: 'rich-editor prose-custom focus:outline-none',
+        // pl-8 carves a left gutter (32px) for the BlockMenu + button.
+        // The button is absolutely positioned inside rich-editor-wrapper at left:0,
+        // so it sits in this gutter — always visible on every screen width.
+        class: 'rich-editor prose-custom focus:outline-none pl-8',
         spellcheck: 'true',
       },
     },
@@ -103,7 +103,7 @@ export function RichTextEditor({
 
   return (
     <div
-      className="rich-editor-wrapper relative"
+      className="rich-editor-wrapper relative overflow-visible"
       onClick={handleWrapperClick}
     >
       {editable && <FloatingToolbar editor={editor} />}
