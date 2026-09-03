@@ -1,15 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { postsApi } from '@/lib/api/posts';
-import { PostListItem } from '@/types/post';
 import { Navbar } from '@/components/layout/Navbar';
 import { formatDistanceToNow } from 'date-fns';
-import { PenSquare, Eye, EyeOff, Trash2, Edit2, Clock, ArrowLeft } from 'lucide-react';
+import { PenSquare, Clock, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import { useMyPosts } from '@/hooks/useMyPosts';
+import { PostActions } from '@/components/blog/PostActions';
 
 const STATUS_COLORS: Record<string, string> = {
   PUBLISHED: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400',
@@ -21,49 +21,21 @@ export default function MyPostsPage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
-  const [posts, setPosts] = useState<PostListItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [actionId, setActionId] = useState<string | null>(null);
-
+  // Redirect guests
   useEffect(() => {
     if (!isLoading && !user) router.replace('/login');
   }, [user, isLoading, router]);
 
-  useEffect(() => {
-    if (!user) return;
-    postsApi.myPosts(0, 50)
-      .then((r) => setPosts(r.data.data.content))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [user]);
-
-  const handlePublish = async (id: string) => {
-    setActionId(id);
-    try {
-      const res = await postsApi.publish(id);
-      setPosts((p) => p.map((post) => post.id === id ? { ...post, status: res.data.data.status as any, publishedAt: res.data.data.publishedAt } : post));
-    } catch { alert('Failed to publish.'); }
-    finally { setActionId(null); }
-  };
-
-  const handleUnpublish = async (id: string) => {
-    setActionId(id);
-    try {
-      const res = await postsApi.unpublish(id);
-      setPosts((p) => p.map((post) => post.id === id ? { ...post, status: res.data.data.status as any } : post));
-    } catch { alert('Failed to unpublish.'); }
-    finally { setActionId(null); }
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Move this post to trash?')) return;
-    setActionId(id);
-    try {
-      await postsApi.delete(id);
-      setPosts((p) => p.map((post) => post.id === id ? { ...post, status: 'DELETED' as any } : post));
-    } catch { alert('Failed to delete.'); }
-    finally { setActionId(null); }
-  };
+  // All post-management state and mutations live in the shared hook.
+  // pageSize=50 loads everything at once — no "load more" needed here.
+  const {
+    posts,
+    loading,
+    actionId,
+    handlePublish,
+    handleUnpublish,
+    handleDelete,
+  } = useMyPosts({ pageSize: 50 });
 
   if (isLoading || !user) return null;
 
@@ -80,16 +52,18 @@ export default function MyPostsPage() {
             </Link>
             <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white">My Posts</h1>
           </div>
-          <Link href="/dashboard/posts/new"
-            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-full text-sm transition-colors shadow-sm">
+          <Link
+            href="/dashboard/posts/new"
+            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-full text-sm transition-colors shadow-sm"
+          >
             <PenSquare className="h-4 w-4" /> New Post
           </Link>
         </div>
 
-        {/* Posts table */}
+        {/* Posts list */}
         {loading ? (
           <div className="space-y-3">
-            {[1,2,3,4].map((i) => (
+            {[1, 2, 3, 4].map((i) => (
               <div key={i} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 animate-pulse">
                 <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3 mb-2" />
                 <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
@@ -101,20 +75,27 @@ export default function MyPostsPage() {
             <p className="text-5xl mb-4">✍️</p>
             <p className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">No posts yet</p>
             <p className="text-gray-500 dark:text-gray-400 mb-6">Start writing your first article</p>
-            <Link href="/dashboard/posts/new"
-              className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-full text-sm transition-colors">
+            <Link
+              href="/dashboard/posts/new"
+              className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-full text-sm transition-colors"
+            >
               <PenSquare className="h-4 w-4" /> Write your first post
             </Link>
           </div>
         ) : (
           <div className="space-y-3">
             {posts.map((post) => (
-              <div key={post.id}
-                className="bg-white dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700 p-4 flex items-center gap-4 hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
-
+              <div
+                key={post.id}
+                className="bg-white dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700 p-4 flex items-center gap-4 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+              >
                 {/* Cover thumbnail */}
                 {post.coverImageUrl ? (
-                  <img src={post.coverImageUrl} alt={post.title} className="w-16 h-16 rounded-lg object-cover flex-shrink-0 hidden sm:block" />
+                  <img
+                    src={post.coverImageUrl}
+                    alt={post.title}
+                    className="w-16 h-16 rounded-lg object-cover flex-shrink-0 hidden sm:block"
+                  />
                 ) : (
                   <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 hidden sm:flex items-center justify-center flex-shrink-0">
                     <PenSquare className="h-6 w-6 text-gray-400" />
@@ -141,41 +122,20 @@ export default function MyPostsPage() {
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <Link href={`/dashboard/posts/${post.slug}/edit`}
-                    className="p-2 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
-                    title="Edit">
-                    <Edit2 className="h-4 w-4" />
-                  </Link>
-
-                  {post.status === 'DRAFT' && (
-                    <button onClick={() => handlePublish(post.id)} disabled={actionId === post.id}
-                      className="p-2 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 transition-colors disabled:opacity-50"
-                      title="Publish">
-                      <Eye className="h-4 w-4" />
-                    </button>
-                  )}
-
-                  {post.status === 'PUBLISHED' && (
-                    <button onClick={() => handleUnpublish(post.id)} disabled={actionId === post.id}
-                      className="p-2 rounded-lg text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/30 transition-colors disabled:opacity-50"
-                      title="Unpublish">
-                      <EyeOff className="h-4 w-4" />
-                    </button>
-                  )}
-
-                  {post.status !== 'DELETED' && (
-                    <button onClick={() => handleDelete(post.id)} disabled={actionId === post.id}
-                      className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors disabled:opacity-50"
-                      title="Delete">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
+                <PostActions
+                  post={post}
+                  actionId={actionId}
+                  editHref={`/dashboard/posts/${post.slug}/edit`}
+                  size="md"
+                  onPublish={handlePublish}
+                  onUnpublish={handleUnpublish}
+                  onDelete={handleDelete}
+                />
               </div>
             ))}
           </div>
         )}
+
       </div>
     </div>
   );

@@ -1,20 +1,20 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { postsApi } from '@/lib/api/posts';
 import { usersApi } from '@/lib/api/users';
 import { mediaApi } from '@/lib/api/media';
-import { PostListItem } from '@/types/post';
 import { formatDistanceToNow } from 'date-fns';
 import {
-  PenSquare, Eye, EyeOff, Trash2, Edit2, Clock,
+  PenSquare, Clock,
   Upload, Save, Lock, Loader2, CheckCircle2, AlertCircle,
-  FileText, Settings, ShieldCheck, ExternalLink, ChevronDown
+  FileText, Settings, ShieldCheck, ChevronDown
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import { useMyPosts } from '@/hooks/useMyPosts';
+import { PostActions } from '@/components/blog/PostActions';
 
 const STATUS = {
   PUBLISHED: { dot: 'bg-green-500', label: 'Published', text: 'text-green-600 dark:text-green-400' },
@@ -38,61 +38,18 @@ function Feedback({ msg }: { msg: { type: 'success' | 'error'; text: string } | 
 
 // ── Stories tab ───────────────────────────────────────────────────────────────
 function StoriesTab() {
-  const [posts, setPosts] = useState<PostListItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [actionId, setActionId] = useState<string | null>(null);
-  const [page, setPage] = useState(0);
-  const [hasMore, setHasMore] = useState(false);
-
-  const fetchPosts = useCallback(async (p: number, append: boolean) => {
-    try {
-      const r = await postsApi.myPosts(p, 20);
-      const data = r.data.data;
-      setPosts(prev => append ? [...prev, ...data.content] : data.content);
-      setHasMore(!data.last);
-      setPage(p);
-    } catch { /* ignore */ }
-  }, []);
-
-  useEffect(() => {
-    setLoading(true);
-    fetchPosts(0, false).finally(() => setLoading(false));
-  }, [fetchPosts]);
-
-  const loadMore = async () => {
-    setLoadingMore(true);
-    await fetchPosts(page + 1, true);
-    setLoadingMore(false);
-  };
-
-  const handlePublish = async (id: string) => {
-    setActionId(id);
-    try {
-      const res = await postsApi.publish(id);
-      setPosts(p => p.map(post => post.id === id ? { ...post, status: res.data.data.status as any, publishedAt: res.data.data.publishedAt } : post));
-    } catch { alert('Failed to publish.'); }
-    finally { setActionId(null); }
-  };
-
-  const handleUnpublish = async (id: string) => {
-    setActionId(id);
-    try {
-      const res = await postsApi.unpublish(id);
-      setPosts(p => p.map(post => post.id === id ? { ...post, status: res.data.data.status as any } : post));
-    } catch { alert('Failed to unpublish.'); }
-    finally { setActionId(null); }
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Move this post to trash?')) return;
-    setActionId(id);
-    try {
-      await postsApi.delete(id);
-      setPosts(p => p.map(post => post.id === id ? { ...post, status: 'DELETED' as any } : post));
-    } catch { alert('Failed to delete.'); }
-    finally { setActionId(null); }
-  };
+  // All post-management state and mutations live in the shared hook.
+  const {
+    posts,
+    loading,
+    loadingMore,
+    hasMore,
+    actionId,
+    loadMore,
+    handlePublish,
+    handleUnpublish,
+    handleDelete,
+  } = useMyPosts({ pageSize: 20 });
 
   if (loading) return (
     <div className="space-y-4">
@@ -125,7 +82,6 @@ function StoriesTab() {
     <div>
       {posts.map(post => {
         const s = STATUS[post.status] ?? STATUS.DRAFT;
-        const busy = actionId === post.id;
         return (
           <article key={post.id} className="group flex gap-4 py-5 border-b border-gray-100 dark:border-gray-800 last:border-0">
             <div className="flex-1 min-w-0">
@@ -151,42 +107,18 @@ function StoriesTab() {
                 </span>
                 <span className="text-xs text-gray-400">{post.viewCount} views</span>
                 <span className="text-xs text-gray-400">{post.likeCount} likes</span>
-                <span className="ml-auto flex items-center gap-1">
-                  {post.status === 'PUBLISHED' && (
-                    <Link href={`/blog/${post.slug}`} target="_blank"
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                      title="View live">
-                      <ExternalLink className="h-4 w-4" />
-                    </Link>
-                  )}
-                  {/* FIX #1: use post.slug not post.id */}
-                  <Link href={`/profile/posts/${post.slug}/edit`}
-                    className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-                    title="Edit">
-                    <Edit2 className="h-4 w-4" />
-                  </Link>
-                  {post.status === 'DRAFT' && (
-                    <button onClick={() => handlePublish(post.id)} disabled={busy}
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors disabled:opacity-40"
-                      title="Publish">
-                      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  )}
-                  {post.status === 'PUBLISHED' && (
-                    <button onClick={() => handleUnpublish(post.id)} disabled={busy}
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors disabled:opacity-40"
-                      title="Unpublish">
-                      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <EyeOff className="h-4 w-4" />}
-                    </button>
-                  )}
-                  {/* FIX #18: delete now shows spinner */}
-                  {post.status !== 'DELETED' && (
-                    <button onClick={() => handleDelete(post.id)} disabled={busy}
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-40"
-                      title="Delete">
-                      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                    </button>
-                  )}
+                <span className="ml-auto">
+                  <PostActions
+                    post={post}
+                    actionId={actionId}
+                    editHref={`/profile/posts/${post.slug}/edit`}
+                    showViewLink
+                    showSpinner
+                    size="sm"
+                    onPublish={handlePublish}
+                    onUnpublish={handleUnpublish}
+                    onDelete={handleDelete}
+                  />
                 </span>
               </div>
             </div>
@@ -199,7 +131,7 @@ function StoriesTab() {
         );
       })}
 
-      {/* FIX #6: Load more button */}
+      {/* Load more */}
       {hasMore && (
         <div className="pt-6 flex justify-center">
           <button onClick={loadMore} disabled={loadingMore}
