@@ -5,6 +5,7 @@ import { PostDetail } from '@/types/post';
 import { ApiResponse } from '@/types/api';
 import { LikeButton } from '@/components/blog/LikeButton';
 import { CommentSection } from '@/components/comments/CommentSection';
+import Image from 'next/image';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { Eye, Clock, MessageCircle, ArrowLeft } from 'lucide-react';
@@ -116,7 +117,13 @@ export default async function PostDetailPage({ params }: Props) {
       <div className="flex flex-wrap items-center gap-4 mb-8 pb-6 border-b border-gray-200 dark:border-gray-700">
         <Link href={`/author/${post.author.id}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
           {post.author.avatarUrl ? (
-            <img src={post.author.avatarUrl} alt={post.author.displayName} className="w-10 h-10 rounded-full object-cover" />
+            <Image
+              src={post.author.avatarUrl}
+              alt={post.author.displayName}
+              width={40}
+              height={40}
+              className="rounded-full object-cover"
+            />
           ) : (
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-bold">
               {(post.author.displayName ?? '?').charAt(0)}
@@ -136,8 +143,15 @@ export default async function PostDetailPage({ params }: Props) {
 
       {/* Cover image */}
       {post.coverImageUrl && (
-        <div className="mb-10 rounded-2xl overflow-hidden">
-          <img src={post.coverImageUrl} alt={post.title} className="w-full h-auto max-h-[480px] object-cover" />
+        <div className="mb-10 rounded-2xl overflow-hidden relative aspect-video max-h-[480px]">
+          <Image
+            src={post.coverImageUrl}
+            alt={post.title}
+            fill
+            className="object-cover"
+            priority
+            sizes="(max-width: 768px) 100vw, 848px"
+          />
         </div>
       )}
 

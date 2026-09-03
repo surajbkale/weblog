@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Navbar } from '@/components/layout/Navbar';
 import { formatDistanceToNow } from 'date-fns';
 import { PenSquare, Clock, ArrowLeft } from 'lucide-react';
@@ -91,10 +92,12 @@ export default function MyPostsPage() {
               >
                 {/* Cover thumbnail */}
                 {post.coverImageUrl ? (
-                  <img
+                  <Image
                     src={post.coverImageUrl}
                     alt={post.title}
-                    className="w-16 h-16 rounded-lg object-cover flex-shrink-0 hidden sm:block"
+                    width={64}
+                    height={64}
+                    className="rounded-lg object-cover flex-shrink-0 hidden sm:block"
                   />
                 ) : (
                   <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 hidden sm:flex items-center justify-center flex-shrink-0">

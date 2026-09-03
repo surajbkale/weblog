@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, Suspense } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usersApi } from '@/lib/api/users';
 import { mediaApi } from '@/lib/api/media';
 import { formatDistanceToNow } from 'date-fns';
@@ -123,8 +124,8 @@ function StoriesTab() {
               </div>
             </div>
             {post.coverImageUrl && (
-              <div className="flex-shrink-0 w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden">
-                <img src={post.coverImageUrl} alt={post.title} className="w-full h-full object-cover" />
+              <div className="flex-shrink-0 relative w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden">
+                <Image src={post.coverImageUrl} alt={post.title} fill className="object-cover" sizes="96px" />
               </div>
             )}
           </article>
@@ -219,9 +220,9 @@ function SettingsTab() {
           <div className="flex items-center gap-4">
             <button type="button" onClick={() => fileRef.current?.click()}
               className="relative group flex-shrink-0">
-              <div className="w-16 h-16 rounded-full overflow-hidden ring-2 ring-gray-200 dark:ring-gray-700">
+              <div className="w-16 h-16 rounded-full overflow-hidden ring-2 ring-gray-200 dark:ring-gray-700 relative">
                 {avatarUrl ? (
-                  <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                  <Image src={avatarUrl} alt="Avatar" fill className="object-cover" sizes="64px" />
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-xl font-black">
                     {(user?.displayName ?? '?').charAt(0)}
@@ -326,9 +327,9 @@ function ProfileContent() {
         {/* ── Sidebar ─────────────────────────────────────────────────────── */}
         <aside className="lg:w-56 xl:w-64 flex-shrink-0">
           <div className="flex lg:flex-col items-center lg:items-start gap-4 mb-6">
-            <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-full overflow-hidden ring-2 ring-gray-200 dark:ring-gray-700 flex-shrink-0">
+            <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-full overflow-hidden ring-2 ring-gray-200 dark:ring-gray-700 flex-shrink-0 relative">
               {user.avatarUrl ? (
-                <img src={user.avatarUrl} alt={user.displayName} className="w-full h-full object-cover" />
+                <Image src={user.avatarUrl} alt={user.displayName ?? 'Avatar'} fill className="object-cover" sizes="80px" />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-2xl font-black">
                   {(user.displayName ?? '?').charAt(0)}

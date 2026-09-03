@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usersApi, UpdateProfileRequest, ChangePasswordRequest } from '@/lib/api/users';
 import { mediaApi } from '@/lib/api/media';
 import { Navbar } from '@/components/layout/Navbar';
@@ -113,7 +114,13 @@ export default function ProfilePage() {
             <div className="flex items-center gap-5">
               <div className="relative">
                 {avatarUrl ? (
-                  <img src={avatarUrl} alt="Avatar" className="w-20 h-20 rounded-full object-cover border-2 border-white dark:border-gray-700 shadow" />
+                  <Image
+                    src={avatarUrl}
+                    alt="Avatar"
+                    width={80}
+                    height={80}
+                    className="rounded-full object-cover border-2 border-white dark:border-gray-700 shadow"
+                  />
                 ) : (
                   <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-2xl font-black">
                     {(user.displayName ?? '?').charAt(0)}

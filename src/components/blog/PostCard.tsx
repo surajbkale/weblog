@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { PostListItem } from '@/types/post';
 import { formatDistanceToNow } from 'date-fns';
 import { Heart, MessageCircle, Eye, Clock, Tag } from 'lucide-react';
@@ -20,7 +21,13 @@ export function PostCard({ post, variant = 'default' }: PostCardProps) {
     return (
       <Link href={`/blog/${post.slug}`} className="group relative block rounded-2xl overflow-hidden aspect-[16/9] shadow-md hover:shadow-xl transition-shadow">
         {post.coverImageUrl ? (
-          <img src={post.coverImageUrl} alt={post.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+          <Image
+            src={post.coverImageUrl}
+            alt={post.title}
+            fill
+            className="object-cover group-hover:scale-105 transition-transform duration-500"
+            sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 800px"
+          />
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-blue-600 to-indigo-700" />
         )}
@@ -59,7 +66,13 @@ export function PostCard({ post, variant = 'default' }: PostCardProps) {
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{publishedDate}</p>
         </div>
         {post.coverImageUrl && (
-          <img src={post.coverImageUrl} alt={post.title} className="w-16 h-16 rounded-lg object-cover flex-shrink-0" />
+          <Image
+            src={post.coverImageUrl}
+            alt={post.title}
+            width={64}
+            height={64}
+            className="rounded-lg object-cover flex-shrink-0"
+          />
         )}
       </Link>
     );
@@ -75,8 +88,13 @@ export function PostCard({ post, variant = 'default' }: PostCardProps) {
             {/* Author row */}
             <Link href={`/author/${post.author.id}`} className="flex items-center gap-2 mb-2">
               {post.author.avatarUrl ? (
-                <img src={post.author.avatarUrl} alt={post.author.displayName} className="w-6 h-6 rounded-full object-cover"
-                  onError={e => { e.currentTarget.style.display = 'none'; }} />
+                <Image
+                  src={post.author.avatarUrl}
+                  alt={post.author.displayName}
+                  width={24}
+                  height={24}
+                  className="rounded-full object-cover"
+                />
               ) : (
                 <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-xs font-bold">
                   {(post.author.displayName ?? '?').charAt(0)}
@@ -123,11 +141,13 @@ export function PostCard({ post, variant = 'default' }: PostCardProps) {
         {/* Thumbnail */}
         {post.coverImageUrl && (
           <Link href={`/blog/${post.slug}`} className="flex-shrink-0">
-            <div className="w-24 h-24 sm:w-32 sm:h-24 rounded-xl overflow-hidden">
-              <img
+            <div className="relative w-24 h-24 sm:w-32 sm:h-24 rounded-xl overflow-hidden">
+              <Image
                 src={post.coverImageUrl}
                 alt={post.title}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                fill
+                className="object-cover group-hover:scale-105 transition-transform duration-500"
+                sizes="(max-width: 640px) 96px, 128px"
               />
             </div>
           </Link>
@@ -142,11 +162,13 @@ export function PostCard({ post, variant = 'default' }: PostCardProps) {
       {/* Cover image */}
       {post.coverImageUrl && (
         <Link href={`/blog/${post.slug}`}>
-          <div className="aspect-[16/9] overflow-hidden">
-            <img
+          <div className="relative aspect-[16/9] overflow-hidden">
+            <Image
               src={post.coverImageUrl}
               alt={post.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              fill
+              className="object-cover group-hover:scale-105 transition-transform duration-500"
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             />
           </div>
         </Link>
@@ -186,8 +208,13 @@ export function PostCard({ post, variant = 'default' }: PostCardProps) {
         <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700">
           <Link href={`/author/${post.author.id}`} className="flex items-center gap-2 min-w-0">
             {post.author.avatarUrl ? (
-              <img src={post.author.avatarUrl} alt={post.author.displayName} className="w-7 h-7 rounded-full object-cover flex-shrink-0"
-                onError={e => { e.currentTarget.style.display = 'none'; }} />
+              <Image
+                src={post.author.avatarUrl}
+                alt={post.author.displayName}
+                width={28}
+                height={28}
+                className="rounded-full object-cover flex-shrink-0"
+              />
             ) : (
               <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                 {(post.author.displayName ?? '?').charAt(0)}

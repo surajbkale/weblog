@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 import { MessageCircle, Send, Reply, Trash2 } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useToast } from '@/context/ToastContext';
 import { useConfirm } from '@/context/ConfirmContext';
 
@@ -52,11 +53,12 @@ function CommentItem({
       <div className="py-4 border-b border-gray-100 dark:border-gray-800 last:border-0">
         <div className="flex items-start gap-3">
           {comment.author.avatarUrl ? (
-            <img
+            <Image
               src={comment.author.avatarUrl}
               alt={comment.author.displayName}
-              className="w-8 h-8 rounded-full object-cover flex-shrink-0"
-              onError={e => { e.currentTarget.style.display = 'none'; }}
+              width={32}
+              height={32}
+              className="rounded-full object-cover flex-shrink-0"
             />
           ) : (
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">

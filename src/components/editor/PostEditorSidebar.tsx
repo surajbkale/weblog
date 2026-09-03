@@ -3,6 +3,7 @@
 import { X, Upload, Loader2 } from 'lucide-react';
 import { CategoryResponse } from '@/types/post';
 import { cn } from '@/lib/utils/cn';
+import Image from 'next/image';
 
 interface Props {
   coverImageUrl: string;
@@ -42,8 +43,8 @@ export function PostEditorSidebar({
       <div className="bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Cover Image</h3>
         {coverImageUrl ? (
-          <div className="relative">
-            <img src={coverImageUrl} alt="Cover" className="w-full aspect-video object-cover rounded-lg" />
+          <div className="relative aspect-video">
+            <Image src={coverImageUrl} alt="Cover" fill className="object-cover rounded-lg" sizes="(max-width: 1024px) 100vw, 320px" />
             <button
               onClick={() => onCoverChange('')}
               className="absolute top-2 right-2 p-1 bg-black/60 hover:bg-black/80 text-white rounded-full transition-colors"
