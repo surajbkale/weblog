@@ -36,7 +36,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       openGraph: {
         title: post.title,
         description: post.excerpt ?? '',
-        images: post.coverImageUrl ? [post.coverImageUrl] : [],
+        images: post.coverImageUrl 
+          ? [post.coverImageUrl] 
+          : [`/api/og?title=${encodeURIComponent(post.title)}&author=${encodeURIComponent(post.author.displayName)}`],
       },
       robots: post.status === 'PUBLISHED' ? undefined : {
         index: false,
