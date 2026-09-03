@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -31,7 +32,14 @@ export default function EditPostPage({ params }: Props) {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>([]);
-  const [categories, setCategories] = useState<CategoryResponse[]>([]);
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories'],
+    queryFn: async () => {
+      const res = await categoriesApi.list();
+      return res.data.data;
+    },
+    staleTime: 1000 * 60 * 60,
+  });
   const [uploadingCover, setUploadingCover] = useState(false);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -54,10 +62,6 @@ export default function EditPostPage({ params }: Props) {
 
   useEffect(() => { params.then(({ id }) => setSlug(id)); }, [params]);
   useEffect(() => { if (!isLoading && !user) router.replace('/login'); }, [user, isLoading, router]);
-  useEffect(() => {
-    categoriesApi.list().then(r => setCategories(r.data.data)).catch(() => {});
-  }, []);
-
   useEffect(() => {
     if (!slug) return;
     setFetchLoading(true);

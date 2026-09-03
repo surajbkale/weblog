@@ -21,6 +21,7 @@ const nextConfig: NextConfig = {
     return [
       { source: '/dashboard', destination: '/profile', permanent: false },
       { source: '/dashboard/posts', destination: '/profile', permanent: false },
+      { source: '/dashboard/profile', destination: '/profile?tab=settings', permanent: false },
     ];
   },
   async rewrites() {

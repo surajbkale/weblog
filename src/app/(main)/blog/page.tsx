@@ -2,7 +2,8 @@
 
 import { Suspense } from 'react';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { postsApi } from '@/lib/api/posts';
 import { categoriesApi } from '@/lib/api/categories';
@@ -35,29 +36,34 @@ function BlogListingContent() {
   const page     = parseInt(searchParams.get('page') || '0');
 
   const [data,       setData]       = useState<PaginatedResponse<PostListItem> | null>(null);
-  const [categories, setCategories] = useState<CategoryResponse[]>([]);
+
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories'],
+    queryFn: async () => {
+      const res = await categoriesApi.list();
+      return res.data.data;
+    },
+    retry: 1,
+    staleTime: 1000 * 60 * 60, // Cache for 1 hour since categories rarely change
+  });
   const [loading,    setLoading]    = useState(true);
   // FIX #8: track fetch errors to show proper UI
   const [fetchError, setFetchError] = useState(false);
 
-  const updateParam = (key: string, value: string) => {
+  const updateParam = useCallback((key: string, value: string) => {
     const params = new URLSearchParams(searchParams.toString());
     if (value) params.set(key, value); else params.delete(key);
     params.delete('page');
     router.push(`/blog?${params.toString()}`);
-  };
+  }, [searchParams, router]);
 
-  const clearSearch = () => {
+  const clearSearch = useCallback(() => {
     const params = new URLSearchParams(searchParams.toString());
     params.delete('q');
     params.delete('page');
     router.push(`/blog?${params.toString()}`);
-  };
+  }, [searchParams, router]);
 
-  useEffect(() => {
-    // FIX #8: categories failure is non-fatal — silently ok
-    categoriesApi.list().then((r) => setCategories(r.data.data)).catch(() => {});
-  }, []);
 
   useEffect(() => {
     setLoading(true);

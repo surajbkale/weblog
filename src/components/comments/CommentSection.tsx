@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { commentsApi } from '@/lib/api/comments';
 import { CommentResponse } from '@/types/comment';
 import { useAuth } from '@/context/AuthContext';
@@ -124,9 +124,16 @@ export function CommentSection({ postId, commentCount: initialCount }: CommentSe
       .finally(() => setLoading(false));
   }, [postId]);
 
-  // Separate roots from replies
-  const roots = comments.filter(c => !c.parentId);
-  const repliesFor = (parentId: string) => comments.filter(c => c.parentId === parentId);
+  // Separate roots from replies (memoized to prevent re-filtering on every render)
+  const roots = useMemo(() => comments.filter(c => !c.parentId), [comments]);
+  const replyMap = useMemo(() => {
+    const map: Record<string, CommentResponse[]> = {};
+    comments.forEach(c => {
+      if (c.parentId) (map[c.parentId] ??= []).push(c);
+    });
+    return map;
+  }, [comments]);
+  const repliesFor = (parentId: string) => replyMap[parentId] || [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
