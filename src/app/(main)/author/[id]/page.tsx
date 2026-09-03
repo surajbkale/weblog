@@ -62,10 +62,10 @@ export default async function AuthorPage({ params }: Props) {
             alt={profile.displayName}
             width={96}
             height={96}
-            className="rounded-full object-cover ring-4 ring-white dark:ring-gray-800 shadow-lg"
+            className="mx-auto sm:mx-0 rounded-full object-cover ring-4 ring-white dark:ring-gray-800 shadow-lg"
           />
         ) : (
-          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-3xl font-black shadow-lg">
+          <div className="mx-auto sm:mx-0 w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-3xl font-black shadow-lg">
             {(profile.displayName ?? '?').charAt(0)}
           </div>
         )}

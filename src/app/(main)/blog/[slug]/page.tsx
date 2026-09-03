@@ -109,7 +109,7 @@ export default async function PostDetailPage({ params }: Props) {
       )}
 
       {/* Title */}
-      <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 dark:text-white leading-tight mb-4">
+      <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-gray-900 dark:text-white leading-tight mb-4 break-words [overflow-wrap:anywhere]">
         {post.title}
       </h1>
 
