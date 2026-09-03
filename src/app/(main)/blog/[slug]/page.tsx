@@ -5,12 +5,15 @@ import { PostDetail } from '@/types/post';
 import { ApiResponse } from '@/types/api';
 import { LikeButton } from '@/components/blog/LikeButton';
 import { CommentSection } from '@/components/comments/CommentSection';
+import { ShareButton } from '@/components/blog/ShareButton';
+import { RelatedPosts } from '@/components/blog/RelatedPosts';
 import Image from 'next/image';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { Eye, Clock, MessageCircle, ArrowLeft } from 'lucide-react';
 import { highlightCodeBlocks } from '@/lib/highlightCode';
 import { BlogContent } from '@/components/blog/BlogContent';
+import { ReadingProgress } from '@/components/blog/ReadingProgress';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 // INTERNAL_API_URL is injected at runtime by Docker for SSR fetches inside the container.
@@ -34,6 +37,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         title: post.title,
         description: post.excerpt ?? '',
         images: post.coverImageUrl ? [post.coverImageUrl] : [],
+      },
+      robots: post.status === 'PUBLISHED' ? undefined : {
+        index: false,
+        follow: false,
       },
     };
   } catch {
@@ -90,8 +97,10 @@ export default async function PostDetailPage({ params }: Props) {
     : null;
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      {/* Back link */}
+    <>
+      <ReadingProgress />
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        {/* Back link */}
       <Link href="/blog" className="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors mb-8">
         <ArrowLeft className="h-4 w-4" /> Back to blog
       </Link>
@@ -173,17 +182,29 @@ export default async function PostDetailPage({ params }: Props) {
         </div>
       )}
 
-      {/* Like button */}
-      <div className="flex items-center justify-center py-8 border-t border-b border-gray-200 dark:border-gray-700 mb-10">
+      {/* Action buttons */}
+      <div className="flex items-center justify-center gap-4 py-8 border-t border-b border-gray-200 dark:border-gray-700 mb-10">
         <LikeButton
           postId={post.id}
           initialCount={post.likeCount}
           initialLiked={post.likedByCurrentUser}
         />
+        <ShareButton 
+          title={post.title} 
+          text={post.excerpt ?? undefined} 
+        />
       </div>
+
+      {/* Related Posts */}
+      <RelatedPosts 
+        currentPostId={post.id} 
+        authorId={post.author.id} 
+        authorName={post.author.displayName} 
+      />
 
       {/* Comments */}
       <CommentSection postId={post.id} commentCount={post.commentCount} />
     </div>
+    </>
   );
 }

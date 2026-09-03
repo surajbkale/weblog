@@ -11,13 +11,31 @@ import { toEmbedUrl } from './VideoNode';
 import { cn } from '@/lib/utils/cn';
 import { useToast } from '@/context/ToastContext';
 
+type BlockType =
+  | 'image' | 'video-upload' | 'video-url'
+  | 'code' | 'divider' | 'bullet' | 'ordered' | 'quote';
+
+const BLOCKS: {
+  type: BlockType;
+  icon: React.ElementType;
+  label: string;
+  description: string;
+}[] = [
+  { type: 'image',        icon: Image,        label: 'Image',         description: 'Upload from your device' },
+  { type: 'video-upload', icon: Video,        label: 'Video',         description: 'Upload a video file' },
+  { type: 'video-url',    icon: Link2,        label: 'Embed video',   description: 'YouTube or Vimeo URL' },
+  { type: 'code',         icon: Code2,        label: 'Code block',    description: 'Syntax-highlighted code' },
+  { type: 'divider',      icon: Minus,        label: 'Divider',       description: 'Horizontal rule' },
+  { type: 'bullet',       icon: List,         label: 'Bullet list',   description: 'Unordered list' },
+  { type: 'ordered',      icon: ListOrdered,  label: 'Numbered list', description: 'Ordered list' },
+  { type: 'quote',        icon: Quote,        label: 'Blockquote',    description: 'Blockquote section' },
+];
+
 interface Props {
   editor: Editor;
 }
 
-type BlockType =
-  | 'image' | 'video-upload' | 'video-url'
-  | 'code' | 'divider' | 'bullet' | 'ordered' | 'quote';
+
 
 /**
  * Custom block-insertion menu that tracks the cursor position via the
@@ -38,6 +56,7 @@ export function BlockMenu({ editor }: Props) {
   const [buttonTop, setButtonTop]       = useState<number | null>(null);
   const [isVisible,  setIsVisible]      = useState(false);
   const [open,       setOpen]           = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const [uploading,  setUploading]      = useState(false);
   const [videoUrlMode, setVideoUrlMode] = useState(false);
   const [videoUrl,   setVideoUrl]       = useState('');
@@ -106,6 +125,7 @@ export function BlockMenu({ editor }: Props) {
 
   const closeAll = useCallback(() => {
     setOpen(false);
+    setSelectedIndex(0);
     setVideoUrlMode(false);
     setVideoUrl('');
   }, []);
@@ -196,21 +216,30 @@ export function BlockMenu({ editor }: Props) {
     }
   }, [editor, closeAll]);
 
-  const blocks: {
-    type: BlockType;
-    icon: React.ElementType;
-    label: string;
-    description: string;
-  }[] = [
-    { type: 'image',        icon: Image,       label: 'Image',         description: 'Upload from your device' },
-    { type: 'video-upload', icon: Video,        label: 'Video',         description: 'Upload a video file' },
-    { type: 'video-url',    icon: Link2,        label: 'Embed video',   description: 'YouTube or Vimeo URL' },
-    { type: 'code',         icon: Code2,        label: 'Code block',    description: 'Syntax-highlighted code' },
-    { type: 'divider',      icon: Minus,        label: 'Divider',       description: 'Horizontal rule' },
-    { type: 'bullet',       icon: List,         label: 'Bullet list',   description: 'Unordered list' },
-    { type: 'ordered',      icon: ListOrdered,  label: 'Numbered list', description: 'Ordered list' },
-    { type: 'quote',        icon: Quote,        label: 'Blockquote',    description: 'Blockquote section' },
-  ];
+  // ── Keyboard navigation ───────────────────────────────────────────────────
+  useEffect(() => {
+    if (!open) {
+      setSelectedIndex(0);
+      return;
+    }
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedIndex((prev) => (prev + 1) % BLOCKS.length);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedIndex((prev) => (prev - 1 + BLOCKS.length) % BLOCKS.length);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        // Construct a fake pointer event to satisfy the signature without crashing
+        handleBlock(BLOCKS[selectedIndex].type, { preventDefault: () => {} } as any);
+      } else if (e.key === 'Escape') {
+        closeAll();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [open, selectedIndex, handleBlock, closeAll]);
 
   return (
     // This div is the positioning context. It must be `relative` and its
@@ -251,6 +280,9 @@ export function BlockMenu({ editor }: Props) {
                   : 'border-gray-300 dark:border-gray-600 text-gray-400 hover:border-blue-400 hover:text-blue-500'
               )}
               title="Insert block"
+              aria-label="Insert block"
+              aria-haspopup="menu"
+              aria-expanded={open}
             >
               <Plus className="h-4 w-4" />
             </button>
@@ -263,10 +295,12 @@ export function BlockMenu({ editor }: Props) {
               w-64 max-w-[calc(100vw-5rem)]
               bg-white dark:bg-gray-900
               rounded-xl shadow-2xl
-              border border-gray-200 dark:border-gray-700
               py-1.5 overflow-hidden
               animate-in fade-in slide-in-from-left-2 duration-150
-            ">
+            "
+            role="menu"
+            aria-orientation="vertical"
+            >
               <div className="flex items-center justify-between px-3 pt-1 pb-2 border-b border-gray-100 dark:border-gray-800">
                 <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   Insert
@@ -279,21 +313,35 @@ export function BlockMenu({ editor }: Props) {
                 </button>
               </div>
 
-              {blocks.map(({ type, icon: Icon, label, description }) => (
-                <button
-                  key={type}
-                  onPointerDown={(e) => handleBlock(type, e)}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left group"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/30 flex items-center justify-center transition-colors flex-shrink-0">
-                    <Icon className="h-4 w-4 text-gray-500 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{label}</p>
-                    <p className="text-xs text-gray-400">{description}</p>
-                  </div>
-                </button>
-              ))}
+              {BLOCKS.map(({ type, icon: Icon, label, description }, idx) => {
+                const isSelected = idx === selectedIndex;
+                return (
+                  <button
+                    key={type}
+                    role="menuitem"
+                    onPointerDown={(e) => handleBlock(type, e)}
+                    onMouseEnter={() => setSelectedIndex(idx)}
+                    className={cn(
+                      'w-full flex items-center gap-3 px-3 py-2.5 transition-colors text-left group',
+                      isSelected ? 'bg-gray-50 dark:bg-gray-800' : 'hover:bg-gray-50 dark:hover:bg-gray-800'
+                    )}
+                  >
+                    <div className={cn(
+                      'w-8 h-8 rounded-lg flex items-center justify-center transition-colors flex-shrink-0',
+                      isSelected ? 'bg-blue-50 dark:bg-blue-900/30' : 'bg-gray-100 dark:bg-gray-800 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/30'
+                    )}>
+                      <Icon className={cn(
+                        'h-4 w-4 transition-colors',
+                        isSelected ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400'
+                      )} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{label}</p>
+                      <p className="text-xs text-gray-400">{description}</p>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           )}
 
