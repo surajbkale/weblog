@@ -147,11 +147,11 @@ function BlogListingContent() {
 
       {/* Category pills */}
       {categories.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-8">
+        <div className="flex overflow-x-auto gap-2 pb-1 mb-8 scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           <button
             onClick={() => updateParam('category', '')}
             className={cn(
-              'px-4 py-1.5 rounded-full text-sm font-medium transition-colors',
+              'flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-colors',
               !category
                 ? 'bg-blue-600 text-white shadow-sm'
                 : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
@@ -164,7 +164,7 @@ function BlogListingContent() {
               key={cat.id}
               onClick={() => updateParam('category', cat.slug)}
               className={cn(
-                'px-4 py-1.5 rounded-full text-sm font-medium transition-colors',
+                'flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-colors',
                 category === cat.slug
                   ? 'bg-blue-600 text-white shadow-sm'
                   : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'

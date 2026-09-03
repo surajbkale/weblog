@@ -6,6 +6,7 @@ import { CommentResponse } from '@/types/comment';
 import { useAuth } from '@/context/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 import { MessageCircle, Send, Reply, Trash2 } from 'lucide-react';
+import { cn } from '@/lib/utils/cn';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useToast } from '@/context/ToastContext';
@@ -36,7 +37,7 @@ function CommentItem({
 
   if (comment.deleted) {
     return (
-      <div className={depth > 0 ? 'ml-10 mt-2' : ''}>
+      <div className={depth > 0 ? 'ml-4 sm:ml-10 mt-2' : ''}>
         <div className="py-3 border-b border-gray-100 dark:border-gray-800 last:border-0">
           <p className="text-sm text-gray-400 dark:text-gray-600 italic">[deleted]</p>
         </div>
@@ -49,7 +50,7 @@ function CommentItem({
   }
 
   return (
-    <div className={depth > 0 ? 'ml-10 border-l-2 border-gray-100 dark:border-gray-800 pl-4 mt-2' : ''}>
+    <div className={depth > 0 ? cn('pl-3 sm:pl-4 ml-4 sm:ml-10 border-l-2 border-gray-100 dark:border-gray-800 mt-2') : ''}>
       <div className="py-4 border-b border-gray-100 dark:border-gray-800 last:border-0">
         <div className="flex items-start gap-3">
           {comment.author.avatarUrl ? (

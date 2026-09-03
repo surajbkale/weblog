@@ -205,35 +205,38 @@ export function PostCard({ post, variant = 'default' }: PostCardProps) {
         )}
 
         {/* Footer */}
-        <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700">
-          <Link href={`/author/${post.author.id}`} className="flex items-center gap-2 min-w-0">
-            {post.author.avatarUrl ? (
-              <Image
-                src={post.author.avatarUrl}
-                alt={post.author.displayName}
-                width={28}
-                height={28}
-                className="rounded-full object-cover flex-shrink-0"
-              />
-            ) : (
-              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                {(post.author.displayName ?? '?').charAt(0)}
+        <div className="flex flex-col pt-3 border-t border-gray-100 dark:border-gray-700">
+          <div className="flex items-center justify-between">
+            <Link href={`/author/${post.author.id}`} className="flex items-center gap-2 min-w-0">
+              {post.author.avatarUrl ? (
+                <Image
+                  src={post.author.avatarUrl}
+                  alt={post.author.displayName}
+                  width={28}
+                  height={28}
+                  className="rounded-full object-cover flex-shrink-0"
+                />
+              ) : (
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                  {(post.author.displayName ?? '?').charAt(0)}
+                </div>
+              )}
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">{post.author.displayName}</p>
+                <p className="text-xs text-gray-400">{publishedDate}</p>
               </div>
-            )}
-            <div className="min-w-0">
-              <p className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">{post.author.displayName}</p>
-              <p className="text-xs text-gray-400">{publishedDate}</p>
-            </div>
-          </Link>
+            </Link>
 
-          <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
-            <span className="flex items-center gap-1"><Heart className="h-3.5 w-3.5" />{post.likeCount}</span>
-            <span className="flex items-center gap-1"><MessageCircle className="h-3.5 w-3.5" />{post.commentCount}</span>
-            <span className="flex items-center gap-1"><Eye className="h-3.5 w-3.5" />{post.viewCount}</span>
+            <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
+              <span className="flex items-center gap-1"><Heart className="h-3.5 w-3.5" />{post.likeCount}</span>
+              <span className="flex items-center gap-1"><MessageCircle className="h-3.5 w-3.5" />{post.commentCount}</span>
+              <span className="flex items-center gap-1"><Eye className="h-3.5 w-3.5" />{post.viewCount}</span>
+            </div>
           </div>
+
           {/* FIX #17: tags row on default card */}
           {post.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 pt-2">
+            <div className="flex flex-wrap gap-1.5 pt-2 mt-1">
               {post.tags.slice(0, 3).map(tag => (
                 <Link key={tag.id} href={`/blog?tag=${tag.slug}`}
                   className="text-xs text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"

@@ -148,7 +148,7 @@ export default function NewPostPage() {
             className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors shrink-0"
           >
             <ArrowLeft className="h-4 w-4" />
-            <span className="hidden xs:inline">My Stories</span>
+            <span className="hidden sm:inline">My Stories</span>
           </Link>
 
           <div className="flex items-center gap-1.5 sm:gap-3">
@@ -158,6 +158,8 @@ export default function NewPostPage() {
             <button
               onClick={() => savePost(false)}
               disabled={saving || publishing}
+              title="Save Draft"
+              aria-label="Save Draft"
               className="flex items-center gap-1.5 px-3 sm:px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-full text-sm font-medium transition-colors disabled:opacity-50"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
@@ -168,6 +170,8 @@ export default function NewPostPage() {
             <button
               onClick={() => savePost(true)}
               disabled={saving || publishing}
+              title="Publish"
+              aria-label="Publish"
               className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-sm font-medium transition-colors disabled:opacity-50"
             >
               {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}

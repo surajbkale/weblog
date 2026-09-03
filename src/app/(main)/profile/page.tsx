@@ -135,7 +135,7 @@ function StoriesTab() {
       {/* Load more */}
       {hasMore && (
         <div className="pt-6 flex justify-center">
-          <button onClick={loadMore} disabled={loadingMore}
+          <button onClick={() => loadMore()} disabled={loadingMore}
             className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 rounded-full hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50">
             {loadingMore ? <Loader2 className="h-4 w-4 animate-spin" /> : <ChevronDown className="h-4 w-4" />}
             {loadingMore ? 'Loading…' : 'Load more stories'}
@@ -347,7 +347,7 @@ function ProfileContent() {
           </div>
 
           {user.bio && (
-            <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-6 hidden lg:block">{user.bio}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-6">{user.bio}</p>
           )}
 
           <nav className="hidden lg:flex flex-col gap-1 mb-6">
