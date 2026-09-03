@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { Rss } from 'lucide-react';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 export function Footer() {
   const year = new Date().getFullYear();
@@ -19,7 +18,7 @@ export function Footer() {
               A modern platform for writers and thinkers. Share your stories with the world.
             </p>
             <a
-              href={`${API_BASE_URL}/feed.xml`}
+              href="/feed.xml"
               target="_blank"
               rel="noopener noreferrer"
               className="mt-3 inline-flex items-center gap-2 text-sm text-orange-500 hover:text-orange-600 dark:text-orange-400 font-medium transition-colors"
@@ -71,7 +70,7 @@ export function Footer() {
             © {year} Weblogs. All rights reserved.
           </p>
           <a
-            href={`${API_BASE_URL}/sitemap.xml`}
+            href="/sitemap.xml"
             target="_blank"
             rel="noopener noreferrer"
             className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"

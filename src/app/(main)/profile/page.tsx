@@ -299,7 +299,7 @@ function ProfileContent() {
   const router = useRouter();
   const activeTab = (searchParams.get('tab') ?? 'stories') as Tab;
 
-  const setTab = (tab: Tab) => router.push(`/profile?tab=${tab}`, { scroll: false } as any);
+  const setTab = (tab: Tab) => router.push(`/profile?tab=${tab}`, { scroll: false });
 
   // FIX #7: show loading state + redirect guests
   if (isLoading) {

@@ -37,4 +37,42 @@ export const mediaApi = {
 
     return res.data.data.url;
   },
+
+  /**
+   * Delete a media asset from Cloudinary via the backend proxy.
+   *
+   * @param publicId — Cloudinary public ID (path without file extension),
+   *   e.g. "weblog/posts/abc123". Use extractCloudinaryPublicId() to
+   *   derive it from a CDN URL.
+   *
+   * Call this fire-and-forget (.catch(() => {})) — cleanup failure must
+   * never block the user-facing action.
+   */
+  delete: (publicId: string) =>
+    apiClient.delete<ApiResponse<void>>(
+      `/api/v1/media/${encodeURIComponent(publicId)}`
+    ),
 };
+
+/**
+ * Extracts the Cloudinary public ID (path without extension) from a CDN URL.
+ *
+ * Cloudinary URL format:
+ *   https://res.cloudinary.com/{cloud}/{type}/upload/{version?}/{folder/name}.{ext}
+ *
+ * Examples:
+ *   "…/upload/v1234567/weblog/posts/abc.jpg"  →  "weblog/posts/abc"
+ *   "…/upload/weblog/posts/abc.jpg"           →  "weblog/posts/abc"
+ *
+ * Returns null for non-Cloudinary URLs, empty strings, or parse failures —
+ * callers must guard against null before calling mediaApi.delete().
+ */
+export function extractCloudinaryPublicId(url: string): string | null {
+  if (!url) return null;
+  try {
+    const match = url.match(/\/upload\/(?:v\d+\/)?(.+?)(?:\.\w+)?$/);
+    return match?.[1] ?? null;
+  } catch {
+    return null;
+  }
+}

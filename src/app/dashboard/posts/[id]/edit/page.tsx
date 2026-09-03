@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -9,6 +9,7 @@ import { categoriesApi } from '@/lib/api/categories';
 import { CategoryResponse, PostDetail } from '@/types/post';
 import { ArrowLeft, Send, Save, Loader2, PenLine, Settings2 } from 'lucide-react';
 import { mediaApi } from '@/lib/api/media';
+import { extractCloudinaryPublicId } from '@/lib/api/media';
 import { cn } from '@/lib/utils/cn';
 import { RichTextEditor } from '@/components/editor/RichTextEditor';
 import { PostEditorSidebar } from '@/components/editor/PostEditorSidebar';
@@ -39,6 +40,17 @@ export default function EditPostPage({ params }: Props) {
 
   // Mobile tab: 'write' shows editor, 'settings' shows sidebar metadata
   const [mobileTab, setMobileTab] = useState<'write' | 'settings'>('write');
+
+  // Tracks cover URLs uploaded during THIS editing session.
+  // We only fire cleanup deletes for these — never for the server-loaded original
+  // (the backend handles that when the post is saved with a different coverImageUrl).
+  const sessionUploadsRef = useRef(new Set<string>());
+
+  /** Fire-and-forget Cloudinary delete — never throws. */
+  const deleteCover = (url: string) => {
+    const publicId = extractCloudinaryPublicId(url);
+    if (publicId) mediaApi.delete(publicId).catch(() => {});
+  };
 
   useEffect(() => { params.then(({ id }) => setSlug(id)); }, [params]);
   useEffect(() => { if (!isLoading && !user) router.replace('/login'); }, [user, isLoading, router]);
@@ -95,10 +107,29 @@ export default function EditPostPage({ params }: Props) {
     return () => window.removeEventListener('keydown', handler);
   }, [savePost]);
 
+  const handleCoverChange = (url: string) => {
+    // Only delete if it was uploaded this session — never the server original
+    if (!url && coverImageUrl && sessionUploadsRef.current.has(coverImageUrl)) {
+      deleteCover(coverImageUrl);
+      sessionUploadsRef.current.delete(coverImageUrl);
+    }
+    setCoverImageUrl(url);
+  };
+
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if (!file) return;
+    const previousUrl = coverImageUrl; // capture before async upload
     setUploadingCover(true);
-    try { setCoverImageUrl(await mediaApi.upload(file)); }
+    try {
+      const newUrl = await mediaApi.upload(file);
+      sessionUploadsRef.current.add(newUrl);
+      setCoverImageUrl(newUrl);
+      // Only delete the previous cover if it was uploaded this session
+      if (previousUrl && sessionUploadsRef.current.has(previousUrl)) {
+        deleteCover(previousUrl);
+        sessionUploadsRef.current.delete(previousUrl);
+      }
+    }
     catch { toast.error('Failed to upload cover image.'); }
     finally { setUploadingCover(false); }
   };
@@ -120,7 +151,7 @@ export default function EditPostPage({ params }: Props) {
   );
 
   const sidebarProps = {
-    coverImageUrl, onCoverChange: setCoverImageUrl,
+    coverImageUrl, onCoverChange: handleCoverChange,
     uploadingCover, onCoverUpload: handleCoverUpload,
     excerpt, onExcerptChange: setExcerpt,
     categories, selectedCategories, onToggleCategory: toggleCategory,

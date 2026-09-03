@@ -7,7 +7,11 @@ import { PostCard } from '@/components/blog/PostCard';
 import { format } from 'date-fns';
 import { CalendarDays, BookOpen } from 'lucide-react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+const API_BASE     = process.env.NEXT_PUBLIC_API_URL  || 'http://localhost:8080';
+// Inside Docker the Next.js server container talks to the Spring Boot container
+// via the internal bridge network. INTERNAL_API_URL maps to that address.
+// Falls back to the public API_BASE when running locally (no Docker).
+const SSR_API_BASE = process.env.INTERNAL_API_URL     || API_BASE;
 
 interface Props { params: Promise<{ id: string }> }
 
@@ -29,9 +33,9 @@ export const revalidate = 60;
 
 async function getData(id: string) {
   const [profileRes, postsRes] = await Promise.allSettled([
-    axios.get<ApiResponse<PublicProfile>>(`${API_BASE}/api/v1/users/${id}`),
+    axios.get<ApiResponse<PublicProfile>>(`${SSR_API_BASE}/api/v1/users/${id}`),
     axios.get<ApiResponse<PaginatedResponse<PostListItem>>>(
-      `${API_BASE}/api/v1/posts?authorId=${id}&sort=newest&size=20`
+      `${SSR_API_BASE}/api/v1/posts?authorId=${id}&sort=newest&size=20`
     ),
   ]);
 

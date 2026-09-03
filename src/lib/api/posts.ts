@@ -8,12 +8,14 @@ import {
 } from '@/types/post';
 import { ApiResponse } from '@/types/api';
 
+export type SortOption = 'newest' | 'oldest' | 'popular';
+
 export interface ListPostsParams {
   category?: string;
   tag?: string;
   authorId?: string;
   q?: string;
-  sort?: 'newest' | 'oldest' | 'popular';
+  sort?: SortOption;
   page?: number;
   size?: number;
 }

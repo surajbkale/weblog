@@ -9,6 +9,7 @@ import { categoriesApi } from '@/lib/api/categories';
 import { CategoryResponse } from '@/types/post';
 import { ArrowLeft, Send, Save, Loader2, PenLine, Settings2 } from 'lucide-react';
 import { mediaApi } from '@/lib/api/media';
+import { extractCloudinaryPublicId } from '@/lib/api/media';
 import { cn } from '@/lib/utils/cn';
 import { RichTextEditor } from '@/components/editor/RichTextEditor';
 import { PostEditorSidebar } from '@/components/editor/PostEditorSidebar';
@@ -74,11 +75,37 @@ export default function NewPostPage() {
     return () => window.removeEventListener('keydown', handler);
   }, [savePost]);
 
+  // ── Cover image helpers ─────────────────────────────────────────────────────
+
+  /**
+   * Deletes a Cloudinary asset by URL (fire-and-forget).
+   * Never throws — cleanup failure must not block the user action.
+   */
+  const deleteCover = (url: string) => {
+    const publicId = extractCloudinaryPublicId(url);
+    if (publicId) mediaApi.delete(publicId).catch(() => {});
+  };
+
+  /**
+   * Wraps setCoverImageUrl so that clearing the cover (X button in sidebar)
+   * also fires a cleanup request for the old Cloudinary asset.
+   */
+  const handleCoverChange = (url: string) => {
+    if (!url && coverImageUrl) deleteCover(coverImageUrl);
+    setCoverImageUrl(url);
+  };
+
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const previousUrl = coverImageUrl; // capture before async upload
     setUploadingCover(true);
-    try { setCoverImageUrl(await mediaApi.upload(file)); }
+    try {
+      const newUrl = await mediaApi.upload(file);
+      setCoverImageUrl(newUrl);
+      // Clean up the previously uploaded cover (fire-and-forget)
+      if (previousUrl) deleteCover(previousUrl);
+    }
     catch { toast.error('Failed to upload cover image.'); }
     finally { setUploadingCover(false); }
   };
@@ -95,7 +122,7 @@ export default function NewPostPage() {
   if (isLoading || !user) return null;
 
   const sidebarProps = {
-    coverImageUrl, onCoverChange: setCoverImageUrl,
+    coverImageUrl, onCoverChange: handleCoverChange,
     uploadingCover, onCoverUpload: handleCoverUpload,
     excerpt, onExcerptChange: setExcerpt,
     categories, selectedCategories, onToggleCategory: toggleCategory,
