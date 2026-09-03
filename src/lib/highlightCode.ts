@@ -23,6 +23,7 @@ import rehypeHighlight from 'rehype-highlight';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import rehypeStringify from 'rehype-stringify';
 import type { Schema } from 'hast-util-sanitize';
+import { createHash } from 'crypto';
 
 /**
  * Custom sanitize schema derived from the safe default.
@@ -35,9 +36,7 @@ const sanitizeSchema: Schema = {
   ...defaultSchema,
   attributes: {
     ...defaultSchema.attributes,
-    // Allow all class attributes so hljs-* and language-* classes are preserved
     '*': [...(defaultSchema.attributes?.['*'] ?? []), 'className', 'class'],
-    // Allow src/controls on media elements
     iframe: ['src', 'allowFullScreen', 'allow', 'frameBorder', 'width', 'height'],
     video:  ['src', 'controls', 'width', 'height'],
     source: ['src', 'type'],
@@ -54,6 +53,11 @@ const sanitizeSchema: Schema = {
   ],
 };
 
+// Poor man's LRU cache to prevent unbounded memory growth while
+// keeping CPU usage near zero for unchanged posts during ISR revalidations.
+const highlightCache = new Map<string, string>();
+const MAX_CACHE_SIZE = 250;
+
 /**
  * Processes HTML from the Tiptap editor:
  * 1. Parses it as an HTML fragment (no <html><body> wrapper)
@@ -64,16 +68,28 @@ const sanitizeSchema: Schema = {
 export async function highlightCodeBlocks(html: string): Promise<string> {
   if (!html) return html;
 
+  const hash = createHash('sha256').update(html).digest('hex');
+  if (highlightCache.has(hash)) {
+    return highlightCache.get(hash)!;
+  }
+
   const file = await unified()
     .use(rehypeParse, { fragment: true })
     .use(rehypeHighlight, {
-      detect: true,        // auto-detect language if class is missing
-      ignoreMissing: true, // don't throw for unknown languages
+      detect: true,
+      ignoreMissing: true,
     })
-    // Sanitize AFTER highlight so hljs-* spans are preserved by the schema
     .use(rehypeSanitize, sanitizeSchema)
     .use(rehypeStringify)
     .process(html);
 
-  return String(file);
+  const result = String(file);
+  
+  if (highlightCache.size >= MAX_CACHE_SIZE) {
+    // Clear out the cache completely to prevent memory leaks if we hit the limit
+    highlightCache.clear();
+  }
+  highlightCache.set(hash, result);
+
+  return result;
 }

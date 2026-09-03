@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { postsApi } from '@/lib/api/posts';
 import { PostListItem } from '@/types/post';
 import { useToast } from '@/context/ToastContext';
@@ -17,71 +18,64 @@ interface UseMyPostsOptions {
  * bug fix or behaviour change is applied in one place.
  */
 export function useMyPosts({ pageSize = 20 }: UseMyPostsOptions = {}) {
-  const toast   = useToast();
+  const toast = useToast();
   const confirm = useConfirm();
+  const queryClient = useQueryClient();
 
-  const [posts, setPosts] = useState<PostListItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [actionId, setActionId] = useState<string | null>(null);
-  const [page, setPage] = useState(0);
-  const [hasMore, setHasMore] = useState(false);
 
-  // ── Fetch ──────────────────────────────────────────────────────────────────
-  const fetchPosts = useCallback(
-    async (p: number, append: boolean) => {
-      try {
-        const r = await postsApi.myPosts(p, pageSize);
-        const data = r.data.data;
-        setPosts((prev) => (append ? [...prev, ...data.content] : data.content));
-        setHasMore(!data.last);
-        setPage(p);
-      } catch {
-        /* non-critical — silently ignore */
-      }
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+  } = useInfiniteQuery({
+    queryKey: ['myPosts', pageSize],
+    queryFn: async ({ pageParam = 0 }) => {
+      const r = await postsApi.myPosts(pageParam, pageSize);
+      return r.data.data;
     },
-    [pageSize],
-  );
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => {
+      return !lastPage.last ? lastPage.page + 1 : undefined;
+    },
+  });
 
-  useEffect(() => {
-    setLoading(true);
-    fetchPosts(0, false).finally(() => setLoading(false));
-  }, [fetchPosts]);
+  const posts = data ? data.pages.flatMap((page) => page.content) : [];
 
-  const loadMore = async () => {
-    setLoadingMore(true);
-    await fetchPosts(page + 1, true);
-    setLoadingMore(false);
-  };
-
-  // ── Mutations ─────────────────────────────────────────────────────────────
-  const handlePublish = async (id: string) => {
-    setActionId(id);
-    try {
-      const res = await postsApi.publish(id);
-      const { status, publishedAt } = res.data.data;
-      setPosts((p) => p.map((post) => (post.id === id ? { ...post, status, publishedAt } : post)));
+  const publishMutation = useMutation({
+    mutationFn: (id: string) => postsApi.publish(id),
+    onMutate: (id) => setActionId(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['myPosts'] });
       toast.success('Post published!');
-    } catch {
-      toast.error('Failed to publish. Please try again.');
-    } finally {
-      setActionId(null);
-    }
-  };
+    },
+    onError: () => toast.error('Failed to publish. Please try again.'),
+    onSettled: () => setActionId(null),
+  });
 
-  const handleUnpublish = async (id: string) => {
-    setActionId(id);
-    try {
-      const res = await postsApi.unpublish(id);
-      const { status } = res.data.data;
-      setPosts((p) => p.map((post) => (post.id === id ? { ...post, status } : post)));
+  const unpublishMutation = useMutation({
+    mutationFn: (id: string) => postsApi.unpublish(id),
+    onMutate: (id) => setActionId(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['myPosts'] });
       toast.info('Post unpublished and saved as draft.');
-    } catch {
-      toast.error('Failed to unpublish. Please try again.');
-    } finally {
-      setActionId(null);
-    }
-  };
+    },
+    onError: () => toast.error('Failed to unpublish. Please try again.'),
+    onSettled: () => setActionId(null),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => postsApi.delete(id),
+    onMutate: (id) => setActionId(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['myPosts'] });
+      toast.success('Post moved to trash.');
+    },
+    onError: () => toast.error('Failed to delete. Please try again.'),
+    onSettled: () => setActionId(null),
+  });
 
   const handleDelete = async (id: string) => {
     const ok = await confirm({
@@ -89,30 +83,18 @@ export function useMyPosts({ pageSize = 20 }: UseMyPostsOptions = {}) {
       confirmLabel: 'Move to trash',
       destructive: true,
     });
-    if (!ok) return;
-    setActionId(id);
-    try {
-      await postsApi.delete(id);
-      setPosts((p) =>
-        p.map((post) => (post.id === id ? { ...post, status: 'DELETED' as const } : post)),
-      );
-      toast.success('Post moved to trash.');
-    } catch {
-      toast.error('Failed to delete. Please try again.');
-    } finally {
-      setActionId(null);
-    }
+    if (ok) deleteMutation.mutate(id);
   };
 
   return {
     posts,
-    loading,
-    loadingMore,
-    hasMore,
+    loading: isLoading,
+    loadingMore: isFetchingNextPage,
+    hasMore: !!hasNextPage,
     actionId,
-    loadMore,
-    handlePublish,
-    handleUnpublish,
+    loadMore: fetchNextPage,
+    handlePublish: (id: string) => publishMutation.mutate(id),
+    handleUnpublish: (id: string) => unpublishMutation.mutate(id),
     handleDelete,
   };
 }

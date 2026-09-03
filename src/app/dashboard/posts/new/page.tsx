@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
@@ -126,14 +126,16 @@ export default function NewPostPage() {
 
   if (isLoading || !user) return null;
 
-  const sidebarProps = {
+  const sidebarProps = useMemo(() => ({
     coverImageUrl, onCoverChange: handleCoverChange,
     uploadingCover, onCoverUpload: handleCoverUpload,
     excerpt, onExcerptChange: setExcerpt,
     categories, selectedCategories, onToggleCategory: toggleCategory,
     tagInput, onTagInputChange: setTagInput,
     onAddTag: addTag, tags, onRemoveTag: (tag: string) => setTags(tags.filter(t => t !== tag)),
-  };
+  }), [
+    coverImageUrl, uploadingCover, excerpt, categories, selectedCategories, tagInput, tags
+  ]);
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950 transition-colors">
