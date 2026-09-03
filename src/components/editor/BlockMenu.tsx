@@ -9,6 +9,7 @@ import { useRef, useState, useCallback, useEffect } from 'react';
 import { mediaApi } from '@/lib/api/media';
 import { toEmbedUrl } from './VideoNode';
 import { cn } from '@/lib/utils/cn';
+import { useToast } from '@/context/ToastContext';
 
 interface Props {
   editor: Editor;
@@ -33,6 +34,7 @@ type BlockType =
  * `pl-8` on the ProseMirror element — always visible, never off-screen.
  */
 export function BlockMenu({ editor }: Props) {
+  const toast = useToast();
   const [buttonTop, setButtonTop]       = useState<number | null>(null);
   const [isVisible,  setIsVisible]      = useState(false);
   const [open,       setOpen]           = useState(false);
@@ -119,7 +121,7 @@ export function BlockMenu({ editor }: Props) {
       const url = await mediaApi.upload(file);
       editor.chain().focus().setImage({ src: url }).splitBlock().run();
     } catch {
-      alert('Image upload failed. Please try again.');
+      toast.error('Image upload failed. Please try again.');
     } finally {
       setUploading(false);
     }
@@ -135,7 +137,7 @@ export function BlockMenu({ editor }: Props) {
       const url = await mediaApi.uploadVideo(file);
       editor.chain().focus().setVideo(url).run();
     } catch {
-      alert('Video upload failed. Please try again.');
+      toast.error('Video upload failed. Please try again.');
     } finally {
       setUploading(false);
     }

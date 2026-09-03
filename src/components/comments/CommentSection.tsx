@@ -7,6 +7,8 @@ import { useAuth } from '@/context/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 import { MessageCircle, Send, Reply, Trash2 } from 'lucide-react';
 import Link from 'next/link';
+import { useToast } from '@/context/ToastContext';
+import { useConfirm } from '@/context/ConfirmContext';
 
 interface CommentSectionProps {
   postId: string;
@@ -102,6 +104,8 @@ function CommentItem({
 // ── Main comment section ──────────────────────────────────────────────────────
 export function CommentSection({ postId, commentCount: initialCount }: CommentSectionProps) {
   const { user } = useAuth();
+  const toast   = useToast();
+  const confirm = useConfirm();
   const [comments, setComments] = useState<CommentResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [newComment, setNewComment] = useState('');
@@ -138,20 +142,25 @@ export function CommentSection({ postId, commentCount: initialCount }: CommentSe
       setNewComment('');
       setReplyTo(null);
     } catch {
-      alert('Failed to post comment. Please try again.');
+      toast.error('Failed to post comment. Please try again.');
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this comment?')) return;
+    const ok = await confirm({
+      message: 'Delete this comment?',
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!ok) return;
     try {
       await commentsApi.delete(id);
       setComments(prev => prev.map(c => c.id === id ? { ...c, deleted: true, content: null } : c));
       setCount(c => Math.max(0, c - 1));
     } catch {
-      alert('Failed to delete comment.');
+      toast.error('Failed to delete comment.');
     }
   };
 

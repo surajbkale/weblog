@@ -12,10 +12,12 @@ import { mediaApi } from '@/lib/api/media';
 import { cn } from '@/lib/utils/cn';
 import { RichTextEditor } from '@/components/editor/RichTextEditor';
 import { PostEditorSidebar } from '@/components/editor/PostEditorSidebar';
+import { useToast } from '@/context/ToastContext';
 
 export default function NewPostPage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
+  const toast = useToast();
 
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -39,7 +41,7 @@ export default function NewPostPage() {
 
   const savePost = useCallback(async (publish: boolean) => {
     if (!title.trim() || !content.trim() || content === '<p></p>') {
-      alert('Title and content are required.');
+      toast.error('Title and content are required.');
       return;
     }
     publish ? setPublishing(true) : setSaving(true);
@@ -59,9 +61,9 @@ export default function NewPostPage() {
       } else {
         router.push('/profile');
       }
-    } catch { alert('Failed to save post.'); }
+    } catch { toast.error('Failed to save post. Please try again.'); }
     finally { setSaving(false); setPublishing(false); }
-  }, [title, content, excerpt, coverImageUrl, selectedCategories, tags, router]);
+  }, [title, content, excerpt, coverImageUrl, selectedCategories, tags, router, toast]);
 
   // Ctrl+S / Cmd+S → save draft
   useEffect(() => {
@@ -77,7 +79,7 @@ export default function NewPostPage() {
     if (!file) return;
     setUploadingCover(true);
     try { setCoverImageUrl(await mediaApi.upload(file)); }
-    catch { alert('Failed to upload cover image.'); }
+    catch { toast.error('Failed to upload cover image.'); }
     finally { setUploadingCover(false); }
   };
 

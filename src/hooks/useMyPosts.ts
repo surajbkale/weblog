@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { postsApi } from '@/lib/api/posts';
 import { PostListItem } from '@/types/post';
+import { useToast } from '@/context/ToastContext';
+import { useConfirm } from '@/context/ConfirmContext';
 
 interface UseMyPostsOptions {
   /** How many posts to fetch per page (default 20). */
@@ -15,6 +17,9 @@ interface UseMyPostsOptions {
  * bug fix or behaviour change is applied in one place.
  */
 export function useMyPosts({ pageSize = 20 }: UseMyPostsOptions = {}) {
+  const toast   = useToast();
+  const confirm = useConfirm();
+
   const [posts, setPosts] = useState<PostListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -56,8 +61,9 @@ export function useMyPosts({ pageSize = 20 }: UseMyPostsOptions = {}) {
       const res = await postsApi.publish(id);
       const { status, publishedAt } = res.data.data;
       setPosts((p) => p.map((post) => (post.id === id ? { ...post, status, publishedAt } : post)));
+      toast.success('Post published!');
     } catch {
-      alert('Failed to publish.');
+      toast.error('Failed to publish. Please try again.');
     } finally {
       setActionId(null);
     }
@@ -69,23 +75,30 @@ export function useMyPosts({ pageSize = 20 }: UseMyPostsOptions = {}) {
       const res = await postsApi.unpublish(id);
       const { status } = res.data.data;
       setPosts((p) => p.map((post) => (post.id === id ? { ...post, status } : post)));
+      toast.info('Post unpublished and saved as draft.');
     } catch {
-      alert('Failed to unpublish.');
+      toast.error('Failed to unpublish. Please try again.');
     } finally {
       setActionId(null);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Move this post to trash?')) return;
+    const ok = await confirm({
+      message: 'Move this post to trash?',
+      confirmLabel: 'Move to trash',
+      destructive: true,
+    });
+    if (!ok) return;
     setActionId(id);
     try {
       await postsApi.delete(id);
       setPosts((p) =>
         p.map((post) => (post.id === id ? { ...post, status: 'DELETED' as const } : post)),
       );
+      toast.success('Post moved to trash.');
     } catch {
-      alert('Failed to delete.');
+      toast.error('Failed to delete. Please try again.');
     } finally {
       setActionId(null);
     }

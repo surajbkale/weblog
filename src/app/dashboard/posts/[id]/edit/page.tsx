@@ -12,12 +12,14 @@ import { mediaApi } from '@/lib/api/media';
 import { cn } from '@/lib/utils/cn';
 import { RichTextEditor } from '@/components/editor/RichTextEditor';
 import { PostEditorSidebar } from '@/components/editor/PostEditorSidebar';
+import { useToast } from '@/context/ToastContext';
 
 interface Props { params: Promise<{ id: string }>; }
 
 export default function EditPostPage({ params }: Props) {
   const { user, isLoading } = useAuth();
   const router = useRouter();
+  const toast = useToast();
 
   const [postId, setPostId] = useState('');
   const [slug, setSlug] = useState('');
@@ -59,13 +61,13 @@ export default function EditPostPage({ params }: Props) {
         setTags(post.tags.map(t => t.name));
         setCurrentStatus(post.status ?? 'DRAFT');
       })
-      .catch(() => { alert('Post not found or no permission.'); router.replace('/profile'); })
+      .catch(() => { toast.error('Post not found or you do not have permission to edit it.'); router.replace('/profile'); })
       .finally(() => setFetchLoading(false));
   }, [slug, router]);
 
   const savePost = useCallback(async (publish: boolean) => {
     if (!title.trim() || !content.trim() || content === '<p></p>') {
-      alert('Title and content are required.');
+      toast.error('Title and content are required.');
       return;
     }
     publish ? setPublishing(true) : setSaving(true);
@@ -80,9 +82,9 @@ export default function EditPostPage({ params }: Props) {
       });
       if (publish && currentStatus !== 'PUBLISHED') await postsApi.publish(postId);
       router.push('/profile');
-    } catch { alert('Failed to save post. Please try again.'); }
+    } catch { toast.error('Failed to save post. Please try again.'); }
     finally { setSaving(false); setPublishing(false); }
-  }, [title, content, excerpt, coverImageUrl, selectedCategories, tags, postId, currentStatus, router]);
+  }, [title, content, excerpt, coverImageUrl, selectedCategories, tags, postId, currentStatus, router, toast]);
 
   // Ctrl+S / Cmd+S → save
   useEffect(() => {
@@ -97,7 +99,7 @@ export default function EditPostPage({ params }: Props) {
     const file = e.target.files?.[0]; if (!file) return;
     setUploadingCover(true);
     try { setCoverImageUrl(await mediaApi.upload(file)); }
-    catch { alert('Failed to upload cover image.'); }
+    catch { toast.error('Failed to upload cover image.'); }
     finally { setUploadingCover(false); }
   };
 
