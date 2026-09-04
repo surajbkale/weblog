@@ -11,11 +11,13 @@ import { formatDistanceToNow } from 'date-fns';
 import {
   PenSquare, Clock,
   Upload, Save, Lock, Loader2, CheckCircle2, AlertCircle,
-  FileText, Settings, ShieldCheck, ChevronDown
+  FileText, Settings, ShieldCheck, ChevronDown, Bookmark
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { useMyPosts } from '@/hooks/useMyPosts';
 import { PostActions } from '@/components/blog/PostActions';
+import { useBookmarks } from '@/context/BookmarkContext';
+import { PostCard } from '@/components/blog/PostCard';
 
 const STATUS = {
   PUBLISHED: { dot: 'bg-green-500', label: 'Published', text: 'text-green-600 dark:text-green-400' },
@@ -287,9 +289,40 @@ function SettingsTab() {
   );
 }
 
+// ── Bookmarks Tab ──────────────────────────────────────────────────────────────
+function BookmarksTab() {
+  const { bookmarks } = useBookmarks();
+
+  if (bookmarks.length === 0) {
+    return (
+      <div className="text-center py-20">
+        <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Bookmark className="h-7 w-7 text-gray-400" />
+        </div>
+        <p className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-1">Your reading list is empty</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">Save articles to read them later.</p>
+        <Link href="/blog"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-gray-900 dark:bg-white hover:bg-gray-700 dark:hover:bg-gray-100 text-white dark:text-gray-900 font-medium rounded-full text-sm transition-colors">
+          Explore stories
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {bookmarks.map((post) => (
+        <PostCard key={post.id} post={post} variant="horizontal" />
+      ))}
+    </div>
+  );
+}
+
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 const TABS = [
   { id: 'stories',  label: 'Stories',  icon: FileText },
+  { id: 'bookmarks', label: 'Bookmarks', icon: Bookmark },
   { id: 'settings', label: 'Settings', icon: Settings },
 ] as const;
 type Tab = typeof TABS[number]['id'];
@@ -312,6 +345,14 @@ function ProfileContent() {
   }
 
   if (!user) {
+    if (activeTab === 'bookmarks') {
+      return (
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white mb-8">Reading List</h1>
+          <BookmarksTab />
+        </div>
+      );
+    }
     router.replace('/login');
     return null;
   }
@@ -394,7 +435,7 @@ function ProfileContent() {
 
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-              {activeTab === 'stories' ? 'Your stories' : 'Settings'}
+              {activeTab === 'stories' ? 'Your stories' : activeTab === 'bookmarks' ? 'Reading List' : 'Settings'}
             </h1>
             {activeTab === 'stories' && (
               <Link href="/profile/posts/new"
@@ -405,6 +446,7 @@ function ProfileContent() {
           </div>
 
           {activeTab === 'stories'  && <StoriesTab />}
+          {activeTab === 'bookmarks' && <BookmarksTab />}
           {activeTab === 'settings' && <SettingsTab />}
         </div>
       </div>

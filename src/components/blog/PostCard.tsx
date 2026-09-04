@@ -6,6 +6,7 @@ import { PostListItem } from '@/types/post';
 import { formatDistanceToNow } from 'date-fns';
 import { Heart, MessageCircle, Eye, Clock, Tag } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import { BookmarkButton } from './BookmarkButton';
 
 interface PostCardProps {
   post: PostListItem;
@@ -49,6 +50,11 @@ export function PostCard({ post, variant = 'default' }: PostCardProps) {
             <span>{publishedDate}</span>
           </div>
         </div>
+        
+        {/* Bookmark button floats on top right */}
+        <div className="absolute top-4 right-4 z-10">
+          <BookmarkButton post={post} className="bg-black/20 hover:bg-black/40 text-white border border-white/20" />
+        </div>
       </Link>
     );
   }
@@ -74,6 +80,9 @@ export function PostCard({ post, variant = 'default' }: PostCardProps) {
             className="rounded-lg object-cover flex-shrink-0"
           />
         )}
+        <div className="flex flex-col justify-center items-end ml-auto">
+          <BookmarkButton post={post} />
+        </div>
       </Link>
     );
   }
@@ -138,6 +147,10 @@ export function PostCard({ post, variant = 'default' }: PostCardProps) {
           </div>
         </div>
 
+        <div className="flex flex-col justify-center items-end flex-shrink-0 ml-auto mr-2 sm:mr-0">
+          <BookmarkButton post={post} />
+        </div>
+
         {/* Thumbnail */}
         {post.coverImageUrl && (
           <Link href={`/blog/${post.slug}`} className="flex-shrink-0">
@@ -184,10 +197,15 @@ export function PostCard({ post, variant = 'default' }: PostCardProps) {
               </span>
             ))}
           </div>
-          <span className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
-            <Clock className="h-3 w-3" />
-            {post.readingTimeMinutes} min
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
+              <Clock className="h-3 w-3" />
+              {post.readingTimeMinutes} min
+            </span>
+            <div className="-mr-2 -mt-1">
+              <BookmarkButton post={post} />
+            </div>
+          </div>
         </div>
 
         {/* Title */}

@@ -14,6 +14,8 @@ import { Eye, Clock, MessageCircle, ArrowLeft } from 'lucide-react';
 import { highlightCodeBlocks } from '@/lib/highlightCode';
 import { BlogContent } from '@/components/blog/BlogContent';
 import { ReadingProgress } from '@/components/blog/ReadingProgress';
+import { BookmarkButton } from '@/components/blog/BookmarkButton';
+import { ViewTracker } from '@/components/blog/ViewTracker';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 // INTERNAL_API_URL is injected at runtime by Docker for SSR fetches inside the container.
@@ -191,6 +193,7 @@ export default async function PostDetailPage({ params }: Props) {
           initialCount={post.likeCount}
           initialLiked={post.likedByCurrentUser}
         />
+        <BookmarkButton post={post} className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700 w-10 h-10" />
         <ShareButton 
           title={post.title} 
           text={post.excerpt ?? undefined} 
@@ -206,6 +209,9 @@ export default async function PostDetailPage({ params }: Props) {
 
       {/* Comments */}
       <CommentSection postId={post.id} commentCount={post.commentCount} />
+
+      {/* Track view silently on mount */}
+      <ViewTracker postId={post.id} />
     </div>
     </>
   );

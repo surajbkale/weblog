@@ -5,6 +5,7 @@ import { ThemeProvider as NextThemesProvider } from 'next-themes';
 import { AuthProvider } from '@/context/AuthContext';
 import { ToastProvider } from '@/context/ToastContext';
 import { ConfirmProvider } from '@/context/ConfirmContext';
+import { BookmarkProvider } from '@/context/BookmarkContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const queryClient = new QueryClient({
@@ -22,9 +23,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <AuthProvider>
         <ToastProvider>
           <ConfirmProvider>
-            <QueryClientProvider client={queryClient}>
-              {children}
-            </QueryClientProvider>
+            <BookmarkProvider>
+              <QueryClientProvider client={queryClient}>
+                {children}
+              </QueryClientProvider>
+            </BookmarkProvider>
           </ConfirmProvider>
         </ToastProvider>
       </AuthProvider>
