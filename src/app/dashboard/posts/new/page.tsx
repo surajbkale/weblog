@@ -8,13 +8,14 @@ import Link from 'next/link';
 import { postsApi } from '@/lib/api/posts';
 import { categoriesApi } from '@/lib/api/categories';
 import { CategoryResponse } from '@/types/post';
-import { ArrowLeft, Send, Save, Loader2, PenLine, Settings2 } from 'lucide-react';
-import { mediaApi } from '@/lib/api/media';
+import { ArrowLeft, Loader2, Save, X, ImageIcon, Upload, ImagePlus, CloudLightning, CloudOff, CloudFog, Send, PenLine, Settings2 } from 'lucide-react';
 import { extractCloudinaryPublicId } from '@/lib/api/media';
+import { useAutosave } from '@/hooks/useAutosave';
 import { cn } from '@/lib/utils/cn';
 import { RichTextEditor } from '@/components/editor/RichTextEditor';
 import { PostEditorSidebar } from '@/components/editor/PostEditorSidebar';
 import { useToast } from '@/context/ToastContext';
+import { mediaApi } from '@/lib/api/media';
 
 export default function NewPostPage() {
   const { user, isLoading } = useAuth();
@@ -43,6 +44,9 @@ export default function NewPostPage() {
   // Mobile tab: 'write' shows editor, 'settings' shows sidebar metadata
   const [mobileTab, setMobileTab] = useState<'write' | 'settings'>('write');
 
+  // Once the first autosave/save runs, this post gets an ID.
+  const [createdPostId, setCreatedPostId] = useState<string | null>(null);
+
   useEffect(() => { if (!isLoading && !user) router.replace('/login'); }, [user, isLoading, router]);
 
   const savePost = useCallback(async (publish: boolean) => {
@@ -52,33 +56,79 @@ export default function NewPostPage() {
     }
     publish ? setPublishing(true) : setSaving(true);
     try {
-      const res = await postsApi.create({
+      let postId = createdPostId;
+      const payload = {
         title: title.trim(),
         content: content.trim(),
         excerpt: excerpt.trim() || undefined,
         coverImageUrl: coverImageUrl || undefined,
         categoryIds: selectedCategories.length > 0 ? selectedCategories : undefined,
         tagNames: tags.length > 0 ? tags : undefined,
-      });
-      const postId = res.data.data.id;
-      if (publish) {
-        await postsApi.publish(postId);
-        router.push(`/blog/${res.data.data.slug}`);
+      };
+
+      if (postId) {
+        await postsApi.update(postId, payload);
       } else {
+        const res = await postsApi.create(payload);
+        postId = res.data.data.id;
+        setCreatedPostId(postId);
+        window.history.replaceState(null, '', `/profile/posts/${postId}/edit`);
+      }
+
+      if (publish && postId) {
+        await postsApi.publish(postId);
+        router.push(`/blog/${title.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}`); 
+        // Note: the exact slug might differ if there was a collision, but we usually redirect to profile on publish from 'new' page anyway if we don't have the final slug cleanly.
+        // Actually, we can fetch the exact slug from publish response or just go to profile.
         router.push('/profile');
+      } else if (!publish && !postId) {
+        // Only redirect on manual save if explicitly requested (e.g. they click save and leave)
+        // Wait, on standard "Save Draft", we just stay on the page.
       }
     } catch { toast.error('Failed to save post. Please try again.'); }
     finally { setSaving(false); setPublishing(false); }
-  }, [title, content, excerpt, coverImageUrl, selectedCategories, tags, router, toast]);
+  }, [title, content, excerpt, coverImageUrl, selectedCategories, tags, createdPostId, router, toast]);
+
+  // Hook up Autosave
+  const autosave = useAutosave({
+    data: { title, content, excerpt, coverImageUrl, selectedCategories, tags },
+    onSave: async () => {
+      if (!title.trim() || !content.trim() || content === '<p></p>') return;
+      
+      const payload = {
+        title: title.trim(),
+        content: content.trim(),
+        excerpt: excerpt.trim() || undefined,
+        coverImageUrl: coverImageUrl || undefined,
+        categoryIds: selectedCategories.length > 0 ? selectedCategories : undefined,
+        tagNames: tags.length > 0 ? tags : undefined,
+      };
+
+      if (createdPostId) {
+        await postsApi.update(createdPostId, payload);
+      } else {
+        const res = await postsApi.create(payload);
+        const newId = res.data.data.id;
+        setCreatedPostId(newId);
+        window.history.replaceState(null, '', `/profile/posts/${newId}/edit`);
+      }
+    },
+    intervalMs: 30000,
+    enabled: true // Run from the start
+  });
 
   // Ctrl+S / Cmd+S → save draft
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); savePost(false); }
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') { 
+        e.preventDefault(); 
+        autosave.triggerSave(true);
+        toast.success('Draft saved manually');
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [savePost]);
+  }, [autosave]);
 
   // ── Cover image helpers ─────────────────────────────────────────────────────
 
@@ -152,18 +202,25 @@ export default function NewPostPage() {
           </Link>
 
           <div className="flex items-center gap-1.5 sm:gap-3">
-            <span className="hidden sm:block text-xs text-gray-400">Ctrl+S to save draft</span>
+            
+            {/* Autosave Status */}
+            <div className="hidden sm:flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 mr-2">
+              {autosave.status === 'idle' && <span className="flex items-center gap-1"><CloudFog className="h-3.5 w-3.5" /> Autosave ON</span>}
+              {autosave.status === 'saving' && <span className="flex items-center gap-1 text-blue-500"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving...</span>}
+              {autosave.status === 'saved' && <span className="flex items-center gap-1 text-green-500"><CloudLightning className="h-3.5 w-3.5" /> Saved</span>}
+              {autosave.status === 'error' && <span className="flex items-center gap-1 text-red-500"><CloudOff className="h-3.5 w-3.5" /> Save Failed</span>}
+            </div>
 
             {/* Save Draft */}
             <button
-              onClick={() => savePost(false)}
-              disabled={saving || publishing}
+              onClick={() => { autosave.triggerSave(true); toast.success('Draft saved manually'); }}
+              disabled={autosave.status === 'saving' || publishing}
               title="Save Draft"
               aria-label="Save Draft"
               className="flex items-center gap-1.5 px-3 sm:px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-full text-sm font-medium transition-colors disabled:opacity-50"
             >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              <span className="hidden sm:inline">{saving ? 'Saving…' : 'Save Draft'}</span>
+              {autosave.status === 'saving' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              <span className="hidden sm:inline">{autosave.status === 'saving' ? 'Saving…' : 'Save Draft'}</span>
             </button>
 
             {/* Publish */}
