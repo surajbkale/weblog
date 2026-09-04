@@ -5,7 +5,7 @@ import { commentsApi } from '@/lib/api/comments';
 import { CommentResponse } from '@/types/comment';
 import { useAuth } from '@/context/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
-import { MessageCircle, Send, Reply, Trash2 } from 'lucide-react';
+import { MessageCircle, Send, Reply, Trash2, Edit2, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -22,18 +22,39 @@ function CommentItem({
   comment,
   replies,
   onReply,
+  onEdit,
   onDelete,
   depth = 0,
 }: {
   comment: CommentResponse;
   replies: CommentResponse[];
   onReply: (parentId: string, authorName: string) => void;
+  onEdit: (id: string, newContent: string) => Promise<void>;
   onDelete: (id: string) => void;
   depth?: number;
 }) {
   const { user } = useAuth();
   const isOwn = user?.id === comment.author.id;
   const timeAgo = formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true });
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(comment.content || '');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!editContent.trim() || editContent.trim() === comment.content) {
+      setIsEditing(false);
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await onEdit(comment.id, editContent);
+      setIsEditing(false);
+    } catch {
+      // Error handled by parent
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   if (comment.deleted) {
     return (
@@ -43,7 +64,7 @@ function CommentItem({
         </div>
         {/* Still show replies of deleted comments */}
         {replies.map(r => (
-          <CommentItem key={r.id} comment={r} replies={[]} onReply={onReply} onDelete={onDelete} depth={depth + 1} />
+          <CommentItem key={r.id} comment={r} replies={[]} onReply={onReply} onEdit={onEdit} onDelete={onDelete} depth={depth + 1} />
         ))}
       </div>
     );
@@ -72,33 +93,71 @@ function CommentItem({
               <span className="text-sm font-semibold text-gray-900 dark:text-white">{comment.author.displayName}</span>
               <span className="text-xs text-gray-400">{timeAgo}</span>
             </div>
-            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{comment.content}</p>
+            {isEditing ? (
+              <div className="mt-2 space-y-2">
+                <textarea
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  rows={2}
+                />
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleSave}
+                    disabled={isSaving || !editContent.trim()}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-medium rounded-md transition-colors"
+                  >
+                    {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                    Save
+                  </button>
+                  <button
+                    onClick={() => { setIsEditing(false); setEditContent(comment.content || ''); }}
+                    disabled={isSaving}
+                    className="px-3 py-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 text-xs font-medium rounded-md transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{comment.content}</p>
+            )}
 
-            <div className="flex items-center gap-3 mt-2">
-              {user && depth === 0 && (
-                <button
-                  onClick={() => onReply(comment.id, comment.author.displayName)}
-                  className="flex items-center gap-1 text-xs text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                >
-                  <Reply className="h-3.5 w-3.5" /> Reply
-                </button>
-              )}
-              {isOwn && (
-                <button
-                  onClick={() => onDelete(comment.id)}
-                  className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors"
-                >
-                  <Trash2 className="h-3.5 w-3.5" /> Delete
-                </button>
-              )}
-            </div>
+            {!isEditing && (
+              <div className="flex items-center gap-3 mt-2">
+                {user && depth === 0 && (
+                  <button
+                    onClick={() => onReply(comment.id, comment.author.displayName)}
+                    className="flex items-center gap-1 text-xs text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                  >
+                    <Reply className="h-3.5 w-3.5" /> Reply
+                  </button>
+                )}
+                {isOwn && (
+                  <>
+                    <button
+                      onClick={() => setIsEditing(true)}
+                      className="flex items-center gap-1 text-xs text-gray-400 hover:text-blue-500 transition-colors"
+                    >
+                      <Edit2 className="h-3.5 w-3.5" /> Edit
+                    </button>
+                    <button
+                      onClick={() => onDelete(comment.id)}
+                      className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> Delete
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       {/* Render replies nested under this comment */}
       {replies.map(r => (
-        <CommentItem key={r.id} comment={r} replies={[]} onReply={onReply} onDelete={onDelete} depth={depth + 1} />
+        <CommentItem key={r.id} comment={r} replies={[]} onReply={onReply} onEdit={onEdit} onDelete={onDelete} depth={depth + 1} />
       ))}
     </div>
   );
@@ -167,10 +226,21 @@ export function CommentSection({ postId, commentCount: initialCount }: CommentSe
     if (!ok) return;
     try {
       await commentsApi.delete(id);
-      setComments(prev => prev.map(c => c.id === id ? { ...c, deleted: true, content: null } : c));
+      setComments(prev => prev.map(c => c.id === id ? { ...c, deleted: true, content: null as unknown as string } : c));
       setCount(c => Math.max(0, c - 1));
     } catch {
       toast.error('Failed to delete comment.');
+    }
+  };
+
+  const handleEdit = async (id: string, newContent: string) => {
+    try {
+      await commentsApi.edit(id, { content: newContent });
+      setComments(prev => prev.map(c => c.id === id ? { ...c, content: newContent } : c));
+      toast.success('Comment updated successfully.');
+    } catch {
+      toast.error('Failed to edit comment.');
+      throw new Error('Failed to edit comment');
     }
   };
 
@@ -244,6 +314,7 @@ export function CommentSection({ postId, commentCount: initialCount }: CommentSe
               comment={c}
               replies={repliesFor(c.id)}
               onReply={(id, name) => setReplyTo({ id, name })}
+              onEdit={handleEdit}
               onDelete={handleDelete}
             />
           ))}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/context/ToastContext';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -11,9 +12,10 @@ import { formatDistanceToNow } from 'date-fns';
 import {
   PenSquare, Clock,
   Upload, Save, Lock, Loader2, CheckCircle2, AlertCircle,
-  FileText, Settings, ShieldCheck, ChevronDown, Bookmark
+  FileText, Settings, ShieldCheck, ChevronDown, Bookmark, MailWarning
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import { apiClient } from '@/lib/api/client';
 import { useMyPosts } from '@/hooks/useMyPosts';
 import { PostActions } from '@/components/blog/PostActions';
 import { useBookmarks } from '@/context/BookmarkContext';
@@ -331,9 +333,24 @@ function ProfileContent() {
   const { user, isLoading } = useAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const toast = useToast();
   const activeTab = (searchParams.get('tab') ?? 'stories') as Tab;
+  const [resending, setResending] = useState(false);
 
   const setTab = (tab: Tab) => router.push(`/profile?tab=${tab}`, { scroll: false });
+
+  const handleResendVerification = async () => {
+    if (!user) return;
+    setResending(true);
+    try {
+      await apiClient.post('/api/v1/auth/resend-verification', { email: user.email });
+      toast.success('Verification email sent! Please check your inbox.');
+    } catch {
+      toast.error('Failed to send verification email. Please try again.');
+    } finally {
+      setResending(false);
+    }
+  };
 
   // FIX #7: show loading state + redirect guests
   if (isLoading) {
@@ -432,6 +449,28 @@ function ProfileContent() {
               </button>
             ))}
           </div>
+
+          {!user.emailVerified && (
+            <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 p-4">
+              <div className="flex items-start gap-3">
+                <MailWarning className="h-5 w-5 text-amber-500 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-300">Please verify your email</h3>
+                  <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
+                    Your email address is unverified. Please check your inbox for a verification link to fully unlock your account.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleResendVerification}
+                disabled={resending}
+                className="flex-shrink-0 inline-flex items-center justify-center px-4 py-2 bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/50 dark:hover:bg-amber-800/60 text-amber-800 dark:text-amber-300 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+              >
+                {resending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                {resending ? 'Sending...' : 'Resend Email'}
+              </button>
+            </div>
+          )}
 
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-xl font-bold text-gray-900 dark:text-white">

@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import axios from 'axios';
 import { PublicProfile, PostListItem, PaginatedResponse } from '@/types/post';
 import { ApiResponse } from '@/types/api';
-import { PostCard } from '@/components/blog/PostCard';
+import { AuthorPostsList } from '@/components/blog/AuthorPostsList';
 import { format } from 'date-fns';
 import { CalendarDays, BookOpen } from 'lucide-react';
 
@@ -41,14 +41,14 @@ async function getData(id: string) {
   ]);
 
   const profile = profileRes.status === 'fulfilled' ? profileRes.value.data.data : null;
-  const posts   = postsRes.status   === 'fulfilled' ? postsRes.value.data.data.content : [];
-  return { profile, posts };
+  const postsPaginated = postsRes.status === 'fulfilled' ? postsRes.value.data.data : null;
+  return { profile, postsPaginated };
 }
 
 export default async function AuthorPage({ params }: Props) {
   const { id } = await params;
-  const { profile, posts } = await getData(id);
-  if (!profile) notFound();
+  const { profile, postsPaginated } = await getData(id);
+  if (!profile || !postsPaginated) notFound();
 
   const memberSince = format(new Date(profile.memberSince), 'MMMM yyyy');
 
@@ -91,15 +91,7 @@ export default async function AuthorPage({ params }: Props) {
       <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
         Posts by {profile.displayName}
       </h2>
-      {posts.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          {posts.map((post) => <PostCard key={post.id} post={post} />)}
-        </div>
-      ) : (
-        <div className="text-center py-16 text-gray-400 dark:text-gray-600">
-          <p>No published posts yet.</p>
-        </div>
-      )}
+      <AuthorPostsList authorId={id} initialData={postsPaginated} />
     </div>
   );
 }
