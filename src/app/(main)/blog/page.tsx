@@ -5,6 +5,7 @@ import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { postsApi } from '@/lib/api/posts';
 import { categoriesApi } from '@/lib/api/categories';
+import { tagsApi } from '@/lib/api/tags';
 import { PostCard, PostCardSkeleton } from '@/components/blog/PostCard';
 import { X, RefreshCw, AlertTriangle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
@@ -41,6 +42,16 @@ function BlogListingContent() {
     },
     retry: 1,
     staleTime: 1000 * 60 * 60, // Cache for 1 hour since categories rarely change
+  });
+
+  const { data: tags = [] } = useQuery({
+    queryKey: ['tags'],
+    queryFn: async () => {
+      const res = await tagsApi.list();
+      return res.data.data;
+    },
+    retry: 1,
+    staleTime: 1000 * 60 * 60,
   });
 
   const {
@@ -163,7 +174,7 @@ function BlogListingContent() {
 
       {/* Category pills */}
       {categories.length > 0 && (
-        <div className="flex overflow-x-auto gap-2 pb-1 mb-8 scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <div className="flex overflow-x-auto gap-2 pb-1 mb-4 scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           <button
             onClick={() => updateParam('category', '')}
             className={cn(
@@ -173,7 +184,7 @@ function BlogListingContent() {
                 : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
             )}
           >
-            All
+            All Categories
           </button>
           {categories.map((cat) => (
             <button
@@ -187,6 +198,37 @@ function BlogListingContent() {
               )}
             >
               {cat.name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Tag pills */}
+      {tags.length > 0 && (
+        <div className="flex overflow-x-auto gap-2 pb-1 mb-8 scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <button
+            onClick={() => updateParam('tag', '')}
+            className={cn(
+              'flex-shrink-0 px-3 py-1 rounded-md text-xs font-medium transition-colors border',
+              !tag
+                ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 border-purple-300 dark:border-purple-700'
+                : 'bg-transparent text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800'
+            )}
+          >
+            All Tags
+          </button>
+          {tags.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => updateParam('tag', t.slug)}
+              className={cn(
+                'flex-shrink-0 px-3 py-1 rounded-md text-xs font-medium transition-colors border',
+                tag === t.slug
+                  ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 border-purple-300 dark:border-purple-700'
+                  : 'bg-transparent text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800'
+              )}
+            >
+              #{t.name}
             </button>
           ))}
         </div>
