@@ -3,7 +3,7 @@
 import { BubbleMenu, Editor } from '@tiptap/react';
 import {
   Bold, Italic, Underline, Strikethrough,
-  Code, Link2, Heading2, Heading3, Quote,
+  Code, Link2, Heading2, Heading3, Quote, Trash2,
 } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { cn } from '@/lib/utils/cn';
@@ -101,14 +101,19 @@ export function FloatingToolbar({ editor }: Props) {
       }}
     >
       {/* flex-wrap so buttons reflow to a 2nd row on very small screens */}
-      <div className="bubble-menu flex flex-wrap items-center gap-0.5 bg-gray-900 dark:bg-gray-800 rounded-lg shadow-xl border border-gray-700 p-1"
+      <div 
+        className="bubble-menu flex flex-wrap items-center gap-0.5 bg-gray-900 dark:bg-gray-800 rounded-lg shadow-xl border border-gray-700 p-1"
         style={{ maxWidth: 'min(360px, calc(100vw - 16px))' }}
+        role="toolbar"
+        aria-label="Formatting options"
       >
         {/* Formatting buttons */}
         {tools.map(({ icon: Icon, label, action, isActive }) => (
           <button
             key={label}
             title={label}
+            aria-label={label}
+            aria-pressed={isActive()}
             onMouseDown={(e) => { e.preventDefault(); action(); }}
             className={cn(
               'p-1.5 rounded text-gray-300 hover:text-white hover:bg-gray-700 transition-colors',
@@ -122,7 +127,7 @@ export function FloatingToolbar({ editor }: Props) {
         {/* Divider */}
         <span className="w-px h-5 bg-gray-600 mx-1" />
 
-        {/* Link button */}
+        {/* Link button + prominent Remove-link button */}
         {showLinkInput ? (
           <div className="flex items-center gap-1 px-1">
             <input
@@ -134,34 +139,53 @@ export function FloatingToolbar({ editor }: Props) {
                 if (e.key === 'Escape') setShowLinkInput(false);
               }}
               placeholder="https://…"
+              aria-label="Link URL"
               className="text-xs bg-gray-800 text-white border border-gray-600 rounded px-2 py-1 w-32 sm:w-40 outline-none focus:border-blue-400"
             />
             <button
               onMouseDown={(e) => { e.preventDefault(); applyLink(); }}
+              aria-label="Apply link"
               className="text-xs text-blue-400 hover:text-blue-300 px-1"
             >
               Apply
             </button>
           </div>
         ) : (
-          <button
-            title="Link"
-            onMouseDown={(e) => {
-              e.preventDefault();
-              if (editor.isActive('link')) {
-                editor.chain().focus().unsetLink().run();
-              } else {
+          <div className="flex items-center gap-0.5">
+            {/* Edit / set link */}
+            <button
+              title={editor.isActive('link') ? 'Edit link' : 'Add link'}
+              aria-label={editor.isActive('link') ? 'Edit link' : 'Add link'}
+              aria-pressed={editor.isActive('link')}
+              onMouseDown={(e) => {
+                e.preventDefault();
                 setLinkHref(editor.getAttributes('link').href ?? '');
                 setShowLinkInput(true);
-              }
-            }}
-            className={cn(
-              'p-1.5 rounded text-gray-300 hover:text-white hover:bg-gray-700 transition-colors',
-              editor.isActive('link') && 'bg-gray-700 text-white'
+              }}
+              className={cn(
+                'p-1.5 rounded text-gray-300 hover:text-white hover:bg-gray-700 transition-colors',
+                editor.isActive('link') && 'bg-gray-700 text-white'
+              )}
+            >
+              <Link2 className="h-4 w-4" />
+            </button>
+
+            {/* Remove link — only shown when cursor is inside a link */}
+            {editor.isActive('link') && (
+              <button
+                title="Remove link"
+                aria-label="Remove link"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  editor.chain().focus().unsetLink().run();
+                }}
+                className="flex items-center gap-1 px-2 py-1 rounded bg-red-600 hover:bg-red-700 text-white text-xs font-medium transition-colors"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Remove
+              </button>
             )}
-          >
-            <Link2 className="h-4 w-4" />
-          </button>
+          </div>
         )}
       </div>
     </BubbleMenu>

@@ -1,10 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { PostListItem } from '@/types/post';
 import { formatDistanceToNow } from 'date-fns';
 import { Heart, MessageCircle, Eye, Clock, Tag } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import { BookmarkButton } from './BookmarkButton';
 
 interface PostCardProps {
   post: PostListItem;
@@ -20,7 +22,13 @@ export function PostCard({ post, variant = 'default' }: PostCardProps) {
     return (
       <Link href={`/blog/${post.slug}`} className="group relative block rounded-2xl overflow-hidden aspect-[16/9] shadow-md hover:shadow-xl transition-shadow">
         {post.coverImageUrl ? (
-          <img src={post.coverImageUrl} alt={post.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+          <Image
+            src={post.coverImageUrl}
+            alt={post.title}
+            fill
+            className="object-cover group-hover:scale-105 transition-transform duration-500"
+            sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 800px"
+          />
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-blue-600 to-indigo-700" />
         )}
@@ -42,6 +50,11 @@ export function PostCard({ post, variant = 'default' }: PostCardProps) {
             <span>{publishedDate}</span>
           </div>
         </div>
+        
+        {/* Bookmark button floats on top right */}
+        <div className="absolute top-4 right-4 z-10">
+          <BookmarkButton post={post} className="bg-black/20 hover:bg-black/40 text-white border border-white/20" />
+        </div>
       </Link>
     );
   }
@@ -59,8 +72,17 @@ export function PostCard({ post, variant = 'default' }: PostCardProps) {
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{publishedDate}</p>
         </div>
         {post.coverImageUrl && (
-          <img src={post.coverImageUrl} alt={post.title} className="w-16 h-16 rounded-lg object-cover flex-shrink-0" />
+          <Image
+            src={post.coverImageUrl}
+            alt={post.title}
+            width={64}
+            height={64}
+            className="rounded-lg object-cover flex-shrink-0"
+          />
         )}
+        <div className="flex flex-col justify-center items-end ml-auto">
+          <BookmarkButton post={post} />
+        </div>
       </Link>
     );
   }
@@ -75,8 +97,13 @@ export function PostCard({ post, variant = 'default' }: PostCardProps) {
             {/* Author row */}
             <Link href={`/author/${post.author.id}`} className="flex items-center gap-2 mb-2">
               {post.author.avatarUrl ? (
-                <img src={post.author.avatarUrl} alt={post.author.displayName} className="w-6 h-6 rounded-full object-cover"
-                  onError={e => { e.currentTarget.style.display = 'none'; }} />
+                <Image
+                  src={post.author.avatarUrl}
+                  alt={post.author.displayName}
+                  width={24}
+                  height={24}
+                  className="rounded-full object-cover"
+                />
               ) : (
                 <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-xs font-bold">
                   {(post.author.displayName ?? '?').charAt(0)}
@@ -120,14 +147,20 @@ export function PostCard({ post, variant = 'default' }: PostCardProps) {
           </div>
         </div>
 
+        <div className="flex flex-col justify-center items-end flex-shrink-0 ml-auto mr-2 sm:mr-0">
+          <BookmarkButton post={post} />
+        </div>
+
         {/* Thumbnail */}
         {post.coverImageUrl && (
           <Link href={`/blog/${post.slug}`} className="flex-shrink-0">
-            <div className="w-24 h-24 sm:w-32 sm:h-24 rounded-xl overflow-hidden">
-              <img
+            <div className="relative w-24 h-24 sm:w-32 sm:h-24 rounded-xl overflow-hidden">
+              <Image
                 src={post.coverImageUrl}
                 alt={post.title}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                fill
+                className="object-cover group-hover:scale-105 transition-transform duration-500"
+                sizes="(max-width: 640px) 96px, 128px"
               />
             </div>
           </Link>
@@ -142,11 +175,13 @@ export function PostCard({ post, variant = 'default' }: PostCardProps) {
       {/* Cover image */}
       {post.coverImageUrl && (
         <Link href={`/blog/${post.slug}`}>
-          <div className="aspect-[16/9] overflow-hidden">
-            <img
+          <div className="relative aspect-[16/9] overflow-hidden">
+            <Image
               src={post.coverImageUrl}
               alt={post.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              fill
+              className="object-cover group-hover:scale-105 transition-transform duration-500"
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             />
           </div>
         </Link>
@@ -162,10 +197,15 @@ export function PostCard({ post, variant = 'default' }: PostCardProps) {
               </span>
             ))}
           </div>
-          <span className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
-            <Clock className="h-3 w-3" />
-            {post.readingTimeMinutes} min
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
+              <Clock className="h-3 w-3" />
+              {post.readingTimeMinutes} min
+            </span>
+            <div className="-mr-2 -mt-1">
+              <BookmarkButton post={post} />
+            </div>
+          </div>
         </div>
 
         {/* Title */}
@@ -183,30 +223,38 @@ export function PostCard({ post, variant = 'default' }: PostCardProps) {
         )}
 
         {/* Footer */}
-        <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700">
-          <Link href={`/author/${post.author.id}`} className="flex items-center gap-2 min-w-0">
-            {post.author.avatarUrl ? (
-              <img src={post.author.avatarUrl} alt={post.author.displayName} className="w-7 h-7 rounded-full object-cover flex-shrink-0"
-                onError={e => { e.currentTarget.style.display = 'none'; }} />
-            ) : (
-              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                {(post.author.displayName ?? '?').charAt(0)}
+        <div className="flex flex-col pt-3 border-t border-gray-100 dark:border-gray-700">
+          <div className="flex items-center justify-between">
+            <Link href={`/author/${post.author.id}`} className="flex items-center gap-2 min-w-0">
+              {post.author.avatarUrl ? (
+                <Image
+                  src={post.author.avatarUrl}
+                  alt={post.author.displayName}
+                  width={28}
+                  height={28}
+                  className="rounded-full object-cover flex-shrink-0"
+                />
+              ) : (
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                  {(post.author.displayName ?? '?').charAt(0)}
+                </div>
+              )}
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">{post.author.displayName}</p>
+                <p className="text-xs text-gray-400">{publishedDate}</p>
               </div>
-            )}
-            <div className="min-w-0">
-              <p className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">{post.author.displayName}</p>
-              <p className="text-xs text-gray-400">{publishedDate}</p>
-            </div>
-          </Link>
+            </Link>
 
-          <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
-            <span className="flex items-center gap-1"><Heart className="h-3.5 w-3.5" />{post.likeCount}</span>
-            <span className="flex items-center gap-1"><MessageCircle className="h-3.5 w-3.5" />{post.commentCount}</span>
-            <span className="flex items-center gap-1"><Eye className="h-3.5 w-3.5" />{post.viewCount}</span>
+            <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
+              <span className="flex items-center gap-1"><Heart className="h-3.5 w-3.5" />{post.likeCount}</span>
+              <span className="flex items-center gap-1"><MessageCircle className="h-3.5 w-3.5" />{post.commentCount}</span>
+              <span className="flex items-center gap-1"><Eye className="h-3.5 w-3.5" />{post.viewCount}</span>
+            </div>
           </div>
+
           {/* FIX #17: tags row on default card */}
           {post.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 pt-2">
+            <div className="flex flex-wrap gap-1.5 pt-2 mt-1">
               {post.tags.slice(0, 3).map(tag => (
                 <Link key={tag.id} href={`/blog?tag=${tag.slug}`}
                   className="text-xs text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"

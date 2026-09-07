@@ -114,30 +114,17 @@ export default async function HomePage() {
         {latest.length > 0 && (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-              {/* Latest posts */}
-              <div className="lg:col-span-2">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Latest</h2>
-                  <Link href="/blog" className="flex items-center gap-1 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
-                    View all <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  {latest.map((post) => <PostCard key={post.id} post={post} />)}
-                </div>
-              </div>
-
               {/* Trending sidebar */}
               {trending.length > 0 && (
-                <aside className="lg:col-span-1">
+                <aside className="lg:col-span-1 lg:order-last">
                   <div className="sticky top-24">
                     <div className="flex items-center gap-2 mb-4">
                       <TrendingUp className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                       <h2 className="text-lg font-bold text-gray-900 dark:text-white">Trending</h2>
                     </div>
-                    <div className="bg-white dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700 p-4">
+                    <div className="bg-white dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 flex flex-row lg:flex-col overflow-x-auto snap-x">
                       {trending.slice(0, 5).map((post, i) => (
-                        <div key={post.id} className="flex gap-3 py-3 border-b border-gray-100 dark:border-gray-700 last:border-0">
+                        <div key={post.id} className="flex gap-3 py-3 border-r lg:border-r-0 lg:border-b border-gray-200 dark:border-gray-700 last:border-0 min-w-[280px] lg:min-w-0 snap-start pr-4 lg:pr-0">
                           <span className="text-3xl font-black text-gray-100 dark:text-gray-700 leading-none w-8 text-center flex-shrink-0">
                             {i + 1}
                           </span>
@@ -157,6 +144,19 @@ export default async function HomePage() {
                   </div>
                 </aside>
               )}
+
+              {/* Latest posts */}
+              <div className="lg:col-span-2">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Latest</h2>
+                  <Link href="/blog" className="flex items-center gap-1 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                    View all <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  {latest.map((post) => <PostCard key={post.id} post={post} />)}
+                </div>
+              </div>
             </div>
           </div>
         )}

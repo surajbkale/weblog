@@ -1,21 +1,27 @@
 'use client';
 
-import { Suspense } from 'react';
-
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState, useCallback, useRef } from 'react';
+import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { postsApi } from '@/lib/api/posts';
 import { categoriesApi } from '@/lib/api/categories';
-import { PostListItem, CategoryResponse, PaginatedResponse } from '@/types/post';
+import { tagsApi } from '@/lib/api/tags';
 import { PostCard, PostCardSkeleton } from '@/components/blog/PostCard';
-import { ChevronLeft, ChevronRight, X, RefreshCw, AlertTriangle } from 'lucide-react';
+import { X, RefreshCw, AlertTriangle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import { SortOption } from '@/lib/api/posts';
 
 const SORT_OPTIONS = [
-  { value: 'newest',  label: 'Newest First' },
-  { value: 'oldest',  label: 'Oldest First' },
-  { value: 'popular', label: 'Most Liked' },
+  { value: 'newest'  as SortOption, label: 'Newest First' },
+  { value: 'oldest'  as SortOption, label: 'Oldest First' },
+  { value: 'popular' as SortOption, label: 'Most Liked' },
 ];
+
+/** Narrows a raw URL param string to SortOption, defaulting to 'newest'. */
+const VALID_SORTS = SORT_OPTIONS.map((o) => o.value);
+function asSort(raw: string | null): SortOption {
+  return (VALID_SORTS as string[]).includes(raw ?? '') ? (raw as SortOption) : 'newest';
+}
 
 function BlogListingContent() {
   const searchParams = useSearchParams();
@@ -24,49 +30,84 @@ function BlogListingContent() {
   const q        = searchParams.get('q')        || '';
   const category = searchParams.get('category') || '';
   const tag      = searchParams.get('tag')      || '';
-  const sort     = searchParams.get('sort')     || 'newest';
-  const page     = parseInt(searchParams.get('page') || '0');
+  const sort     = asSort(searchParams.get('sort'));
 
-  const [data,       setData]       = useState<PaginatedResponse<PostListItem> | null>(null);
-  const [categories, setCategories] = useState<CategoryResponse[]>([]);
-  const [loading,    setLoading]    = useState(true);
-  // FIX #8: track fetch errors to show proper UI
-  const [fetchError, setFetchError] = useState(false);
+  const observerTarget = useRef<HTMLDivElement>(null);
 
-  const updateParam = (key: string, value: string) => {
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories'],
+    queryFn: async () => {
+      const res = await categoriesApi.list();
+      return res.data.data;
+    },
+    retry: 1,
+    staleTime: 1000 * 60 * 60, // Cache for 1 hour since categories rarely change
+  });
+
+  const { data: tags = [] } = useQuery({
+    queryKey: ['tags'],
+    queryFn: async () => {
+      const res = await tagsApi.list();
+      return res.data.data;
+    },
+    retry: 1,
+    staleTime: 1000 * 60 * 60,
+  });
+
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    status,
+    refetch,
+  } = useInfiniteQuery({
+    queryKey: ['posts', q, category, tag, sort],
+    queryFn: async ({ pageParam }) => {
+      const res = await postsApi.list({ q, category, tag, sort, page: pageParam as number, size: 12 });
+      return res.data.data;
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => {
+      return lastPage.last ? undefined : lastPage.page + 1;
+    },
+  });
+
+  const updateParam = useCallback((key: string, value: string) => {
     const params = new URLSearchParams(searchParams.toString());
     if (value) params.set(key, value); else params.delete(key);
-    params.delete('page');
     router.push(`/blog?${params.toString()}`);
-  };
+  }, [searchParams, router]);
 
-  const clearSearch = () => {
+  const clearSearch = useCallback(() => {
     const params = new URLSearchParams(searchParams.toString());
     params.delete('q');
-    params.delete('page');
     router.push(`/blog?${params.toString()}`);
-  };
+  }, [searchParams, router]);
 
   useEffect(() => {
-    // FIX #8: categories failure is non-fatal — silently ok
-    categoriesApi.list().then((r) => setCategories(r.data.data)).catch(() => {});
-  }, []);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1, rootMargin: '400px' } // Load earlier for smooth scrolling
+    );
 
-  useEffect(() => {
-    setLoading(true);
-    setFetchError(false);
-    postsApi
-      .list({ q, category, tag, sort: sort as any, page, size: 12 })
-      .then((r) => { setData(r.data.data); })
-      .catch(() => { setData(null); setFetchError(true); })
-      .finally(() => setLoading(false));
-  }, [q, category, tag, sort, page]);
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const hasActiveFilters = q || tag || category;
+  const allPosts = data?.pages.flatMap((page) => page.content) || [];
+  const totalElements = data?.pages[0]?.totalElements || 0;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-
       {/* Page header */}
       <div className="mb-8">
         <h1 className="text-4xl font-extrabold text-gray-900 dark:text-white mb-2">
@@ -81,7 +122,6 @@ function BlogListingContent() {
 
       {/* Sort + active filter chips row */}
       <div className="flex flex-wrap items-center gap-3 mb-6">
-
         {/* Sort dropdown */}
         <select
           value={sort}
@@ -134,24 +174,24 @@ function BlogListingContent() {
 
       {/* Category pills */}
       {categories.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-8">
+        <div className="flex overflow-x-auto gap-2 pb-1 mb-4 scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           <button
             onClick={() => updateParam('category', '')}
             className={cn(
-              'px-4 py-1.5 rounded-full text-sm font-medium transition-colors',
+              'flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-colors',
               !category
                 ? 'bg-blue-600 text-white shadow-sm'
                 : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
             )}
           >
-            All
+            All Categories
           </button>
           {categories.map((cat) => (
             <button
               key={cat.id}
               onClick={() => updateParam('category', cat.slug)}
               className={cn(
-                'px-4 py-1.5 rounded-full text-sm font-medium transition-colors',
+                'flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-colors',
                 category === cat.slug
                   ? 'bg-blue-600 text-white shadow-sm'
                   : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
@@ -163,25 +203,55 @@ function BlogListingContent() {
         </div>
       )}
 
-      {/* Posts grid */}
-      {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {Array.from({ length: 9 }).map((_, i) => <PostCardSkeleton key={i} />)}
+      {/* Tag pills */}
+      {tags.length > 0 && (
+        <div className="flex overflow-x-auto gap-2 pb-1 mb-8 scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <button
+            onClick={() => updateParam('tag', '')}
+            className={cn(
+              'flex-shrink-0 px-3 py-1 rounded-md text-xs font-medium transition-colors border',
+              !tag
+                ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 border-purple-300 dark:border-purple-700'
+                : 'bg-transparent text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800'
+            )}
+          >
+            All Tags
+          </button>
+          {tags.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => updateParam('tag', t.slug)}
+              className={cn(
+                'flex-shrink-0 px-3 py-1 rounded-md text-xs font-medium transition-colors border',
+                tag === t.slug
+                  ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 border-purple-300 dark:border-purple-700'
+                  : 'bg-transparent text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800'
+              )}
+            >
+              #{t.name}
+            </button>
+          ))}
         </div>
-      ) : fetchError ? (
-        /* FIX #8: show error state with retry */
+      )}
+
+      {/* Posts grid */}
+      {status === 'pending' ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Array.from({ length: 12 }).map((_, i) => <PostCardSkeleton key={i} />)}
+        </div>
+      ) : status === 'error' ? (
         <div className="text-center py-24">
           <AlertTriangle className="h-12 w-12 text-red-400 mx-auto mb-4" />
           <p className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">Failed to load posts</p>
           <p className="text-gray-500 dark:text-gray-400 mb-5">The server may be unavailable. Please try again.</p>
           <button
-            onClick={() => { setFetchError(false); setLoading(true); postsApi.list({ q, category, tag, sort: sort as any, page, size: 12 }).then(r => setData(r.data.data)).catch(() => setFetchError(true)).finally(() => setLoading(false)); }}
+            onClick={() => refetch()}
             className="flex items-center gap-2 mx-auto px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-full transition-colors"
           >
             <RefreshCw className="h-4 w-4" /> Try again
           </button>
         </div>
-      ) : !data || data.content.length === 0 ? (
+      ) : allPosts.length === 0 ? (
         <div className="text-center py-24">
           <p className="text-5xl mb-4">📭</p>
           <p className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">
@@ -202,36 +272,26 @@ function BlogListingContent() {
       ) : (
         <>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-            {data.totalElements} post{data.totalElements !== 1 ? 's' : ''} found
+            {totalElements} post{totalElements !== 1 ? 's' : ''} found
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-            {data.content.map((post) => (
+            {allPosts.map((post) => (
               <PostCard key={post.id} post={post} />
             ))}
           </div>
 
-          {/* Pagination */}
-          {data.totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2">
-              <button
-                onClick={() => updateParam('page', String(page - 1))}
-                disabled={page === 0}
-                className="flex items-center gap-1 px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-600 dark:text-gray-400 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-              >
-                <ChevronLeft className="h-4 w-4" /> Prev
-              </button>
-              <span className="text-sm text-gray-500 dark:text-gray-400 px-2">
-                Page {page + 1} of {data.totalPages}
-              </span>
-              <button
-                onClick={() => updateParam('page', String(page + 1))}
-                disabled={data.last}
-                className="flex items-center gap-1 px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-600 dark:text-gray-400 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-              >
-                Next <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-          )}
+          {/* Infinite scroll observer target and loading indicator */}
+          <div ref={observerTarget} className="flex flex-col items-center justify-center py-8 gap-4">
+            {isFetchingNextPage && (
+              <div className="flex items-center gap-2 text-gray-500">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span className="text-sm font-medium">Loading more posts...</span>
+              </div>
+            )}
+            {!hasNextPage && allPosts.length > 0 && (
+              <p className="text-sm text-gray-400">You've reached the end!</p>
+            )}
+          </div>
         </>
       )}
     </div>

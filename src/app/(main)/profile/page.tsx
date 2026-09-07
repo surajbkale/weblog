@@ -1,20 +1,25 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/context/ToastContext';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { postsApi } from '@/lib/api/posts';
+import Image from 'next/image';
 import { usersApi } from '@/lib/api/users';
 import { mediaApi } from '@/lib/api/media';
-import { PostListItem } from '@/types/post';
 import { formatDistanceToNow } from 'date-fns';
 import {
-  PenSquare, Eye, EyeOff, Trash2, Edit2, Clock,
+  PenSquare, Clock,
   Upload, Save, Lock, Loader2, CheckCircle2, AlertCircle,
-  FileText, Settings, ShieldCheck, ExternalLink, ChevronDown
+  FileText, Settings, ShieldCheck, ChevronDown, Bookmark, MailWarning
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import { apiClient } from '@/lib/api/client';
+import { useMyPosts } from '@/hooks/useMyPosts';
+import { PostActions } from '@/components/blog/PostActions';
+import { useBookmarks } from '@/context/BookmarkContext';
+import { PostCard } from '@/components/blog/PostCard';
 
 const STATUS = {
   PUBLISHED: { dot: 'bg-green-500', label: 'Published', text: 'text-green-600 dark:text-green-400' },
@@ -38,61 +43,18 @@ function Feedback({ msg }: { msg: { type: 'success' | 'error'; text: string } | 
 
 // ── Stories tab ───────────────────────────────────────────────────────────────
 function StoriesTab() {
-  const [posts, setPosts] = useState<PostListItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [actionId, setActionId] = useState<string | null>(null);
-  const [page, setPage] = useState(0);
-  const [hasMore, setHasMore] = useState(false);
-
-  const fetchPosts = useCallback(async (p: number, append: boolean) => {
-    try {
-      const r = await postsApi.myPosts(p, 20);
-      const data = r.data.data;
-      setPosts(prev => append ? [...prev, ...data.content] : data.content);
-      setHasMore(!data.last);
-      setPage(p);
-    } catch { /* ignore */ }
-  }, []);
-
-  useEffect(() => {
-    setLoading(true);
-    fetchPosts(0, false).finally(() => setLoading(false));
-  }, [fetchPosts]);
-
-  const loadMore = async () => {
-    setLoadingMore(true);
-    await fetchPosts(page + 1, true);
-    setLoadingMore(false);
-  };
-
-  const handlePublish = async (id: string) => {
-    setActionId(id);
-    try {
-      const res = await postsApi.publish(id);
-      setPosts(p => p.map(post => post.id === id ? { ...post, status: res.data.data.status as any, publishedAt: res.data.data.publishedAt } : post));
-    } catch { alert('Failed to publish.'); }
-    finally { setActionId(null); }
-  };
-
-  const handleUnpublish = async (id: string) => {
-    setActionId(id);
-    try {
-      const res = await postsApi.unpublish(id);
-      setPosts(p => p.map(post => post.id === id ? { ...post, status: res.data.data.status as any } : post));
-    } catch { alert('Failed to unpublish.'); }
-    finally { setActionId(null); }
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Move this post to trash?')) return;
-    setActionId(id);
-    try {
-      await postsApi.delete(id);
-      setPosts(p => p.map(post => post.id === id ? { ...post, status: 'DELETED' as any } : post));
-    } catch { alert('Failed to delete.'); }
-    finally { setActionId(null); }
-  };
+  // All post-management state and mutations live in the shared hook.
+  const {
+    posts,
+    loading,
+    loadingMore,
+    hasMore,
+    actionId,
+    loadMore,
+    handlePublish,
+    handleUnpublish,
+    handleDelete,
+  } = useMyPosts({ pageSize: 20 });
 
   if (loading) return (
     <div className="space-y-4">
@@ -125,7 +87,6 @@ function StoriesTab() {
     <div>
       {posts.map(post => {
         const s = STATUS[post.status] ?? STATUS.DRAFT;
-        const busy = actionId === post.id;
         return (
           <article key={post.id} className="group flex gap-4 py-5 border-b border-gray-100 dark:border-gray-800 last:border-0">
             <div className="flex-1 min-w-0">
@@ -151,58 +112,34 @@ function StoriesTab() {
                 </span>
                 <span className="text-xs text-gray-400">{post.viewCount} views</span>
                 <span className="text-xs text-gray-400">{post.likeCount} likes</span>
-                <span className="ml-auto flex items-center gap-1">
-                  {post.status === 'PUBLISHED' && (
-                    <Link href={`/blog/${post.slug}`} target="_blank"
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                      title="View live">
-                      <ExternalLink className="h-4 w-4" />
-                    </Link>
-                  )}
-                  {/* FIX #1: use post.slug not post.id */}
-                  <Link href={`/profile/posts/${post.slug}/edit`}
-                    className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-                    title="Edit">
-                    <Edit2 className="h-4 w-4" />
-                  </Link>
-                  {post.status === 'DRAFT' && (
-                    <button onClick={() => handlePublish(post.id)} disabled={busy}
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors disabled:opacity-40"
-                      title="Publish">
-                      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  )}
-                  {post.status === 'PUBLISHED' && (
-                    <button onClick={() => handleUnpublish(post.id)} disabled={busy}
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors disabled:opacity-40"
-                      title="Unpublish">
-                      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <EyeOff className="h-4 w-4" />}
-                    </button>
-                  )}
-                  {/* FIX #18: delete now shows spinner */}
-                  {post.status !== 'DELETED' && (
-                    <button onClick={() => handleDelete(post.id)} disabled={busy}
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-40"
-                      title="Delete">
-                      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                    </button>
-                  )}
+                <span className="ml-auto">
+                  <PostActions
+                    post={post}
+                    actionId={actionId}
+                    editHref={`/profile/posts/${post.slug}/edit`}
+                    showViewLink
+                    showSpinner
+                    size="sm"
+                    onPublish={handlePublish}
+                    onUnpublish={handleUnpublish}
+                    onDelete={handleDelete}
+                  />
                 </span>
               </div>
             </div>
             {post.coverImageUrl && (
-              <div className="flex-shrink-0 w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden">
-                <img src={post.coverImageUrl} alt={post.title} className="w-full h-full object-cover" />
+              <div className="flex-shrink-0 relative w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden">
+                <Image src={post.coverImageUrl} alt={post.title} fill className="object-cover" sizes="96px" />
               </div>
             )}
           </article>
         );
       })}
 
-      {/* FIX #6: Load more button */}
+      {/* Load more */}
       {hasMore && (
         <div className="pt-6 flex justify-center">
-          <button onClick={loadMore} disabled={loadingMore}
+          <button onClick={() => loadMore()} disabled={loadingMore}
             className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 rounded-full hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50">
             {loadingMore ? <Loader2 className="h-4 w-4 animate-spin" /> : <ChevronDown className="h-4 w-4" />}
             {loadingMore ? 'Loading…' : 'Load more stories'}
@@ -287,9 +224,9 @@ function SettingsTab() {
           <div className="flex items-center gap-4">
             <button type="button" onClick={() => fileRef.current?.click()}
               className="relative group flex-shrink-0">
-              <div className="w-16 h-16 rounded-full overflow-hidden ring-2 ring-gray-200 dark:ring-gray-700">
+              <div className="w-16 h-16 rounded-full overflow-hidden ring-2 ring-gray-200 dark:ring-gray-700 relative">
                 {avatarUrl ? (
-                  <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                  <Image src={avatarUrl} alt="Avatar" fill className="object-cover" sizes="64px" />
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-xl font-black">
                     {(user?.displayName ?? '?').charAt(0)}
@@ -354,9 +291,40 @@ function SettingsTab() {
   );
 }
 
+// ── Bookmarks Tab ──────────────────────────────────────────────────────────────
+function BookmarksTab() {
+  const { bookmarks } = useBookmarks();
+
+  if (bookmarks.length === 0) {
+    return (
+      <div className="text-center py-20">
+        <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Bookmark className="h-7 w-7 text-gray-400" />
+        </div>
+        <p className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-1">Your reading list is empty</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">Save articles to read them later.</p>
+        <Link href="/blog"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-gray-900 dark:bg-white hover:bg-gray-700 dark:hover:bg-gray-100 text-white dark:text-gray-900 font-medium rounded-full text-sm transition-colors">
+          Explore stories
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {bookmarks.map((post) => (
+        <PostCard key={post.id} post={post} variant="horizontal" />
+      ))}
+    </div>
+  );
+}
+
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 const TABS = [
   { id: 'stories',  label: 'Stories',  icon: FileText },
+  { id: 'bookmarks', label: 'Bookmarks', icon: Bookmark },
   { id: 'settings', label: 'Settings', icon: Settings },
 ] as const;
 type Tab = typeof TABS[number]['id'];
@@ -365,9 +333,24 @@ function ProfileContent() {
   const { user, isLoading } = useAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const toast = useToast();
   const activeTab = (searchParams.get('tab') ?? 'stories') as Tab;
+  const [resending, setResending] = useState(false);
 
-  const setTab = (tab: Tab) => router.push(`/profile?tab=${tab}`, { scroll: false } as any);
+  const setTab = (tab: Tab) => router.push(`/profile?tab=${tab}`, { scroll: false });
+
+  const handleResendVerification = async () => {
+    if (!user) return;
+    setResending(true);
+    try {
+      await apiClient.post('/api/v1/auth/resend-verification', { email: user.email });
+      toast.success('Verification email sent! Please check your inbox.');
+    } catch {
+      toast.error('Failed to send verification email. Please try again.');
+    } finally {
+      setResending(false);
+    }
+  };
 
   // FIX #7: show loading state + redirect guests
   if (isLoading) {
@@ -379,6 +362,14 @@ function ProfileContent() {
   }
 
   if (!user) {
+    if (activeTab === 'bookmarks') {
+      return (
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white mb-8">Reading List</h1>
+          <BookmarksTab />
+        </div>
+      );
+    }
     router.replace('/login');
     return null;
   }
@@ -394,9 +385,9 @@ function ProfileContent() {
         {/* ── Sidebar ─────────────────────────────────────────────────────── */}
         <aside className="lg:w-56 xl:w-64 flex-shrink-0">
           <div className="flex lg:flex-col items-center lg:items-start gap-4 mb-6">
-            <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-full overflow-hidden ring-2 ring-gray-200 dark:ring-gray-700 flex-shrink-0">
+            <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-full overflow-hidden ring-2 ring-gray-200 dark:ring-gray-700 flex-shrink-0 relative">
               {user.avatarUrl ? (
-                <img src={user.avatarUrl} alt={user.displayName} className="w-full h-full object-cover" />
+                <Image src={user.avatarUrl} alt={user.displayName ?? 'Avatar'} fill className="object-cover" sizes="80px" />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-2xl font-black">
                   {(user.displayName ?? '?').charAt(0)}
@@ -414,7 +405,7 @@ function ProfileContent() {
           </div>
 
           {user.bio && (
-            <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-6 hidden lg:block">{user.bio}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-6">{user.bio}</p>
           )}
 
           <nav className="hidden lg:flex flex-col gap-1 mb-6">
@@ -459,9 +450,31 @@ function ProfileContent() {
             ))}
           </div>
 
+          {!user.emailVerified && (
+            <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 p-4">
+              <div className="flex items-start gap-3">
+                <MailWarning className="h-5 w-5 text-amber-500 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-300">Please verify your email</h3>
+                  <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
+                    Your email address is unverified. Please check your inbox for a verification link to fully unlock your account.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleResendVerification}
+                disabled={resending}
+                className="flex-shrink-0 inline-flex items-center justify-center px-4 py-2 bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/50 dark:hover:bg-amber-800/60 text-amber-800 dark:text-amber-300 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+              >
+                {resending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                {resending ? 'Sending...' : 'Resend Email'}
+              </button>
+            </div>
+          )}
+
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-              {activeTab === 'stories' ? 'Your stories' : 'Settings'}
+              {activeTab === 'stories' ? 'Your stories' : activeTab === 'bookmarks' ? 'Reading List' : 'Settings'}
             </h1>
             {activeTab === 'stories' && (
               <Link href="/profile/posts/new"
@@ -472,6 +485,7 @@ function ProfileContent() {
           </div>
 
           {activeTab === 'stories'  && <StoriesTab />}
+          {activeTab === 'bookmarks' && <BookmarksTab />}
           {activeTab === 'settings' && <SettingsTab />}
         </div>
       </div>

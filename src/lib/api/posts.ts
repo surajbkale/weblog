@@ -8,12 +8,14 @@ import {
 } from '@/types/post';
 import { ApiResponse } from '@/types/api';
 
+export type SortOption = 'newest' | 'oldest' | 'popular';
+
 export interface ListPostsParams {
   category?: string;
   tag?: string;
   authorId?: string;
   q?: string;
-  sort?: 'newest' | 'oldest' | 'popular';
+  sort?: SortOption;
   page?: number;
   size?: number;
 }
@@ -60,6 +62,9 @@ export const postsApi = {
 
   unpublish: (id: string) =>
     apiClient.patch<ApiResponse<PostDetail>>(`/api/v1/posts/${id}/unpublish`),
+
+  incrementView: (id: string) =>
+    apiClient.patch(`/api/v1/posts/${id}/view`),
 
   delete: (id: string) =>
     apiClient.delete<ApiResponse<void>>(`/api/v1/posts/${id}`),
