@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@/context/AuthContext';
@@ -127,12 +128,12 @@ function NavbarInner() {
                     aria-label="User menu"
                   >
                     {user.avatarUrl ? (
-                      // FIX #22: onError fallback to initial letter
-                      <img
+                      <Image
                         src={user.avatarUrl}
-                        alt={user.displayName}
-                        className="w-full h-full object-cover"
-                        onError={e => { e.currentTarget.style.display = 'none'; }}
+                        alt={user.displayName ?? 'Avatar'}
+                        width={36}
+                        height={36}
+                        className="object-cover w-full h-full"
                       />
                     ) : (
                       (user.displayName ?? '?').charAt(0).toUpperCase()

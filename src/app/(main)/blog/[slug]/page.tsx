@@ -5,11 +5,17 @@ import { PostDetail } from '@/types/post';
 import { ApiResponse } from '@/types/api';
 import { LikeButton } from '@/components/blog/LikeButton';
 import { CommentSection } from '@/components/comments/CommentSection';
+import { ShareButton } from '@/components/blog/ShareButton';
+import { RelatedPosts } from '@/components/blog/RelatedPosts';
+import Image from 'next/image';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { Eye, Clock, MessageCircle, ArrowLeft } from 'lucide-react';
 import { highlightCodeBlocks } from '@/lib/highlightCode';
 import { BlogContent } from '@/components/blog/BlogContent';
+import { ReadingProgress } from '@/components/blog/ReadingProgress';
+import { BookmarkButton } from '@/components/blog/BookmarkButton';
+import { ViewTracker } from '@/components/blog/ViewTracker';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 // INTERNAL_API_URL is injected at runtime by Docker for SSR fetches inside the container.
@@ -32,7 +38,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       openGraph: {
         title: post.title,
         description: post.excerpt ?? '',
-        images: post.coverImageUrl ? [post.coverImageUrl] : [],
+        images: post.coverImageUrl 
+          ? [post.coverImageUrl] 
+          : [`/api/og?title=${encodeURIComponent(post.title)}&author=${encodeURIComponent(post.author.displayName)}`],
+      },
+      robots: post.status === 'PUBLISHED' ? undefined : {
+        index: false,
+        follow: false,
       },
     };
   } catch {
@@ -89,8 +101,10 @@ export default async function PostDetailPage({ params }: Props) {
     : null;
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      {/* Back link */}
+    <>
+      <ReadingProgress />
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        {/* Back link */}
       <Link href="/blog" className="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors mb-8">
         <ArrowLeft className="h-4 w-4" /> Back to blog
       </Link>
@@ -108,7 +122,7 @@ export default async function PostDetailPage({ params }: Props) {
       )}
 
       {/* Title */}
-      <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 dark:text-white leading-tight mb-4">
+      <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-gray-900 dark:text-white leading-tight mb-4 break-words [overflow-wrap:anywhere]">
         {post.title}
       </h1>
 
@@ -116,7 +130,13 @@ export default async function PostDetailPage({ params }: Props) {
       <div className="flex flex-wrap items-center gap-4 mb-8 pb-6 border-b border-gray-200 dark:border-gray-700">
         <Link href={`/author/${post.author.id}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
           {post.author.avatarUrl ? (
-            <img src={post.author.avatarUrl} alt={post.author.displayName} className="w-10 h-10 rounded-full object-cover" />
+            <Image
+              src={post.author.avatarUrl}
+              alt={post.author.displayName}
+              width={40}
+              height={40}
+              className="rounded-full object-cover"
+            />
           ) : (
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-bold">
               {(post.author.displayName ?? '?').charAt(0)}
@@ -136,8 +156,15 @@ export default async function PostDetailPage({ params }: Props) {
 
       {/* Cover image */}
       {post.coverImageUrl && (
-        <div className="mb-10 rounded-2xl overflow-hidden">
-          <img src={post.coverImageUrl} alt={post.title} className="w-full h-auto max-h-[480px] object-cover" />
+        <div className="mb-10 rounded-2xl overflow-hidden relative aspect-video max-h-[480px]">
+          <Image
+            src={post.coverImageUrl}
+            alt={post.title}
+            fill
+            className="object-cover"
+            priority
+            sizes="(max-width: 768px) 100vw, 848px"
+          />
         </div>
       )}
 
@@ -159,17 +186,33 @@ export default async function PostDetailPage({ params }: Props) {
         </div>
       )}
 
-      {/* Like button */}
-      <div className="flex items-center justify-center py-8 border-t border-b border-gray-200 dark:border-gray-700 mb-10">
+      {/* Action buttons */}
+      <div className="flex items-center justify-center gap-4 py-8 border-t border-b border-gray-200 dark:border-gray-700 mb-10">
         <LikeButton
           postId={post.id}
           initialCount={post.likeCount}
           initialLiked={post.likedByCurrentUser}
         />
+        <BookmarkButton post={post} className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700 w-10 h-10" />
+        <ShareButton 
+          title={post.title} 
+          text={post.excerpt ?? undefined} 
+        />
       </div>
+
+      {/* Related Posts */}
+      <RelatedPosts 
+        currentPostId={post.id} 
+        authorId={post.author.id} 
+        authorName={post.author.displayName} 
+      />
 
       {/* Comments */}
       <CommentSection postId={post.id} commentCount={post.commentCount} />
+
+      {/* Track view silently on mount */}
+      <ViewTracker postId={post.id} />
     </div>
+    </>
   );
 }

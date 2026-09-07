@@ -1,13 +1,18 @@
 import { Metadata } from 'next';
+import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import axios from 'axios';
 import { PublicProfile, PostListItem, PaginatedResponse } from '@/types/post';
 import { ApiResponse } from '@/types/api';
-import { PostCard } from '@/components/blog/PostCard';
+import { AuthorPostsList } from '@/components/blog/AuthorPostsList';
 import { format } from 'date-fns';
 import { CalendarDays, BookOpen } from 'lucide-react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+const API_BASE     = process.env.NEXT_PUBLIC_API_URL  || 'http://localhost:8080';
+// Inside Docker the Next.js server container talks to the Spring Boot container
+// via the internal bridge network. INTERNAL_API_URL maps to that address.
+// Falls back to the public API_BASE when running locally (no Docker).
+const SSR_API_BASE = process.env.INTERNAL_API_URL     || API_BASE;
 
 interface Props { params: Promise<{ id: string }> }
 
@@ -29,21 +34,21 @@ export const revalidate = 60;
 
 async function getData(id: string) {
   const [profileRes, postsRes] = await Promise.allSettled([
-    axios.get<ApiResponse<PublicProfile>>(`${API_BASE}/api/v1/users/${id}`),
+    axios.get<ApiResponse<PublicProfile>>(`${SSR_API_BASE}/api/v1/users/${id}`),
     axios.get<ApiResponse<PaginatedResponse<PostListItem>>>(
-      `${API_BASE}/api/v1/posts?authorId=${id}&sort=newest&size=20`
+      `${SSR_API_BASE}/api/v1/posts?authorId=${id}&sort=newest&size=20`
     ),
   ]);
 
   const profile = profileRes.status === 'fulfilled' ? profileRes.value.data.data : null;
-  const posts   = postsRes.status   === 'fulfilled' ? postsRes.value.data.data.content : [];
-  return { profile, posts };
+  const postsPaginated = postsRes.status === 'fulfilled' ? postsRes.value.data.data : null;
+  return { profile, postsPaginated };
 }
 
 export default async function AuthorPage({ params }: Props) {
   const { id } = await params;
-  const { profile, posts } = await getData(id);
-  if (!profile) notFound();
+  const { profile, postsPaginated } = await getData(id);
+  if (!profile || !postsPaginated) notFound();
 
   const memberSince = format(new Date(profile.memberSince), 'MMMM yyyy');
 
@@ -52,10 +57,15 @@ export default async function AuthorPage({ params }: Props) {
       {/* Author header */}
       <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 mb-12">
         {profile.avatarUrl ? (
-          <img src={profile.avatarUrl} alt={profile.displayName}
-            className="w-24 h-24 rounded-full object-cover ring-4 ring-white dark:ring-gray-800 shadow-lg" />
+          <Image
+            src={profile.avatarUrl}
+            alt={profile.displayName}
+            width={96}
+            height={96}
+            className="mx-auto sm:mx-0 rounded-full object-cover ring-4 ring-white dark:ring-gray-800 shadow-lg"
+          />
         ) : (
-          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-3xl font-black shadow-lg">
+          <div className="mx-auto sm:mx-0 w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-3xl font-black shadow-lg">
             {(profile.displayName ?? '?').charAt(0)}
           </div>
         )}
@@ -81,15 +91,7 @@ export default async function AuthorPage({ params }: Props) {
       <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
         Posts by {profile.displayName}
       </h2>
-      {posts.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          {posts.map((post) => <PostCard key={post.id} post={post} />)}
-        </div>
-      ) : (
-        <div className="text-center py-16 text-gray-400 dark:text-gray-600">
-          <p>No published posts yet.</p>
-        </div>
-      )}
+      <AuthorPostsList authorId={id} initialData={postsPaginated} />
     </div>
   );
 }

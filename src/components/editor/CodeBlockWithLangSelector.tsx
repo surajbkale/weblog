@@ -66,6 +66,9 @@ function CodeBlockNodeView({ node, updateAttributes, extension }: NodeViewProps)
           <button
             contentEditable={false}
             onClick={() => setOpen(v => !v)}
+            aria-haspopup="listbox"
+            aria-expanded={open}
+            aria-label="Select language"
             className="flex items-center gap-1.5 text-xs text-gray-300 hover:text-white bg-gray-700 hover:bg-gray-600 px-2.5 py-1 rounded transition-colors"
           >
             {selected.label}
@@ -75,11 +78,14 @@ function CodeBlockNodeView({ node, updateAttributes, extension }: NodeViewProps)
           {open && (
             <div
               contentEditable={false}
+              role="listbox"
               className="absolute right-0 top-full mt-1 z-50 w-44 bg-gray-900 border border-gray-700 rounded-lg shadow-2xl overflow-y-auto max-h-64 py-1"
             >
               {LANGUAGES.map(lang => (
                 <button
                   key={lang.value}
+                  role="option"
+                  aria-selected={lang.value === language}
                   onClick={() => selectLang(lang.value)}
                   className="w-full flex items-center justify-between px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
                 >

@@ -101,14 +101,19 @@ export function FloatingToolbar({ editor }: Props) {
       }}
     >
       {/* flex-wrap so buttons reflow to a 2nd row on very small screens */}
-      <div className="bubble-menu flex flex-wrap items-center gap-0.5 bg-gray-900 dark:bg-gray-800 rounded-lg shadow-xl border border-gray-700 p-1"
+      <div 
+        className="bubble-menu flex flex-wrap items-center gap-0.5 bg-gray-900 dark:bg-gray-800 rounded-lg shadow-xl border border-gray-700 p-1"
         style={{ maxWidth: 'min(360px, calc(100vw - 16px))' }}
+        role="toolbar"
+        aria-label="Formatting options"
       >
         {/* Formatting buttons */}
         {tools.map(({ icon: Icon, label, action, isActive }) => (
           <button
             key={label}
             title={label}
+            aria-label={label}
+            aria-pressed={isActive()}
             onMouseDown={(e) => { e.preventDefault(); action(); }}
             className={cn(
               'p-1.5 rounded text-gray-300 hover:text-white hover:bg-gray-700 transition-colors',
@@ -134,10 +139,12 @@ export function FloatingToolbar({ editor }: Props) {
                 if (e.key === 'Escape') setShowLinkInput(false);
               }}
               placeholder="https://…"
+              aria-label="Link URL"
               className="text-xs bg-gray-800 text-white border border-gray-600 rounded px-2 py-1 w-32 sm:w-40 outline-none focus:border-blue-400"
             />
             <button
               onMouseDown={(e) => { e.preventDefault(); applyLink(); }}
+              aria-label="Apply link"
               className="text-xs text-blue-400 hover:text-blue-300 px-1"
             >
               Apply
@@ -148,6 +155,8 @@ export function FloatingToolbar({ editor }: Props) {
             {/* Edit / set link */}
             <button
               title={editor.isActive('link') ? 'Edit link' : 'Add link'}
+              aria-label={editor.isActive('link') ? 'Edit link' : 'Add link'}
+              aria-pressed={editor.isActive('link')}
               onMouseDown={(e) => {
                 e.preventDefault();
                 setLinkHref(editor.getAttributes('link').href ?? '');
@@ -165,6 +174,7 @@ export function FloatingToolbar({ editor }: Props) {
             {editor.isActive('link') && (
               <button
                 title="Remove link"
+                aria-label="Remove link"
                 onMouseDown={(e) => {
                   e.preventDefault();
                   editor.chain().focus().unsetLink().run();
